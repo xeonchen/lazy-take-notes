@@ -73,7 +73,7 @@ def _pre_init_resource_tracker() -> None:  # pragma: no cover -- best-effort pla
         pass
 
 
-@click.group()
+@click.group(invoke_without_command=True)
 @click.option(
     '-c',
     '--config',
@@ -96,6 +96,22 @@ def cli(ctx, config_path, output_dir):
     ctx.ensure_object(dict)
     ctx.obj['config_path'] = config_path
     ctx.obj['output_dir'] = output_dir
+
+    if ctx.invoked_subcommand is not None:
+        return
+
+    from lazy_take_notes.l4_frameworks_and_drivers.pickers.welcome_picker import (  # noqa: PLC0415 -- deferred: Textual not loaded on --help
+        WelcomePicker,
+    )
+
+    mode = WelcomePicker().run()
+    if mode == 'record':
+        ctx.invoke(record)
+    elif mode == 'transcribe':
+        audio_file = click.prompt('Audio file path', type=click.Path(exists=True, dir_okay=False))
+        ctx.invoke(transcribe, audio_file=audio_file)
+    elif mode == 'view':
+        ctx.invoke(view)
 
 
 @cli.command()
