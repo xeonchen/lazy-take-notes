@@ -11,8 +11,7 @@ from textual.containers import Horizontal, Vertical
 from textual.widgets import ListItem, ListView, Static
 
 AUDIO_EXTS = frozenset({
-    '.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.opus',
-    '.weba', '.webm', '.mp4', '.mov',
+    '.mp3', '.wav', '.m4a', '.mp4'
 })
 
 
