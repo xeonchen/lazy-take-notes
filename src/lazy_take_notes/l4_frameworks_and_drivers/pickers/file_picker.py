@@ -41,8 +41,13 @@ class FileItem(ListItem):
     def __init__(self, path: Path) -> None:
         super().__init__()
         self.path = path
-        size = _human_size(path.stat().st_size)
-        self._label = f'{path.name}  [dim]{size}[/dim]'
+        try:
+            stat_result = path.stat()
+        except OSError:
+            size_str = "unknown"
+        else:
+            size_str = _human_size(stat_result.st_size)
+        self._label = f'{path.name}  [dim]{size_str}[/dim]'
 
     def compose(self) -> ComposeResult:
         yield Static(self._label, markup=True)
