@@ -26,6 +26,8 @@ _BUILD = 'lazy_take_notes.l4_frameworks_and_drivers.config.build_app_config'
 _INFRA = 'lazy_take_notes.l4_frameworks_and_drivers.config.InfraConfig'
 _PICKER = 'lazy_take_notes.l4_frameworks_and_drivers.pickers.template_picker.TemplatePicker'
 _SESSION_PICKER = 'lazy_take_notes.l4_frameworks_and_drivers.pickers.session_picker.SessionPicker'
+_FILE_PICKER = 'lazy_take_notes.l4_frameworks_and_drivers.pickers.file_picker.FilePicker'
+_WELCOME_PICKER = 'lazy_take_notes.l4_frameworks_and_drivers.pickers.welcome_picker.WelcomePicker'
 _CLI = 'lazy_take_notes.l4_frameworks_and_drivers.cli'
 
 
@@ -156,14 +158,17 @@ class TestCliGroup:
         assert result.exit_code == 0
         assert __version__ in result.output
 
-    def test_no_subcommand_shows_help(self):
-        """Running `lazy-take-notes` with no subcommand shows usage with all subcommands."""
+    def test_no_subcommand_opens_welcome_picker_then_exits(self):
+        """Running `lazy-take-notes` with no subcommand opens the WelcomePicker."""
         runner = CliRunner()
-        result = runner.invoke(cli, [])
-        assert result.exit_code == 2
-        assert 'record' in result.output
-        assert 'transcribe' in result.output
-        assert 'view' in result.output
+        mock_welcome = MagicMock()
+        mock_welcome.run.return_value = None  # user cancels
+
+        with patch(_WELCOME_PICKER, return_value=mock_welcome):
+            result = runner.invoke(cli, [])
+
+        assert result.exit_code == 0
+        mock_welcome.run.assert_called_once()
 
     def test_config_file_not_found_exits_1(self):
         runner = CliRunner()
@@ -358,6 +363,55 @@ class TestTranscribeSubcommand:
             mock_build.return_value = MagicMock(output=MagicMock(directory=str(tmp_path)))
             runner.invoke(cli, ['transcribe', str(audio_file)])
 
+        mock_app_cls.return_value.run.assert_called_once()
+
+    def test_no_audio_file_opens_file_picker_cancel_exits_cleanly(self):
+        """transcribe with no args opens FilePicker; cancelling exits cleanly."""
+        runner = CliRunner()
+        mock_file_picker = MagicMock()
+        mock_file_picker.run.return_value = None  # user cancels
+
+        with patch(_FILE_PICKER, return_value=mock_file_picker):
+            result = runner.invoke(cli, ['transcribe'])
+
+        assert result.exit_code == 0
+        mock_file_picker.run.assert_called_once()
+
+    def test_no_audio_file_opens_file_picker_proceeds_to_app(self, tmp_path: Path):
+        """transcribe with no args opens FilePicker; selecting a file runs TranscribeApp."""
+        runner = CliRunner()
+        audio_file = tmp_path / 'audio.wav'
+        audio_file.touch()
+
+        mock_file_picker = MagicMock()
+        mock_file_picker.run.return_value = audio_file
+
+        mock_template_picker = MagicMock()
+        mock_template_picker.run.return_value = ('default_en', MagicMock())
+
+        mock_template_loader = MagicMock()
+        mock_template_loader.load.return_value = MagicMock(
+            metadata=MagicMock(locale='en-US'),
+            quick_actions=[],
+            recognition_hints=[],
+        )
+
+        with (
+            patch(_FILE_PICKER, return_value=mock_file_picker),
+            patch(_YAML_CFG) as mock_config_cls,
+            patch(_YAML_TPL, return_value=mock_template_loader),
+            patch(_BUILD) as mock_build,
+            patch(_INFRA),
+            patch(_PICKER, return_value=mock_template_picker),
+            patch(f'{_CLI}._preflight_llm', return_value=([], [])),
+            patch('lazy_take_notes.l4_frameworks_and_drivers.apps.transcribe.TranscribeApp') as mock_app_cls,
+            patch('lazy_take_notes.l4_frameworks_and_drivers.container.DependencyContainer'),
+        ):
+            mock_config_cls.return_value.load.return_value = {}
+            mock_build.return_value = MagicMock(output=MagicMock(directory=str(tmp_path)))
+            runner.invoke(cli, ['transcribe'])
+
+        mock_file_picker.run.assert_called_once()
         mock_app_cls.return_value.run.assert_called_once()
 
 
