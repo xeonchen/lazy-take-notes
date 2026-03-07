@@ -157,8 +157,14 @@ class FilePicker(App[Path | None]):
             self._set_info(f'[bold]..[/bold]\nParent directory\n{parent}')
         elif isinstance(item, DirItem):
             try:
-                count = sum(1 for _ in item.path.iterdir())
-                self._set_info(f'[bold]{item.path.name}/[/bold]\n{count} items')
+                _CAP = 1000
+                count = 0
+                for _ in item.path.iterdir():
+                    count += 1
+                    if count > _CAP:
+                        break
+                label = f'{_CAP}+' if count > _CAP else str(count)
+                self._set_info(f'[bold]{item.path.name}/[/bold]\n{label} items')
             except PermissionError:
                 self._set_info(f'[bold]{item.path.name}/[/bold]\nPermission denied')
         elif isinstance(item, FileItem):
