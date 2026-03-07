@@ -13,6 +13,59 @@ _MODES = [
     ('view', 'View', 'Browse previously saved sessions'),
 ]
 
+# Color palette
+_P = '#E8A820'  # pig body (golden yellow)
+_T = '#4A9E9E'  # teal headphones
+_D = '#2A1818'  # dark outline
+_S = '#C47A10'  # snout (amber-brown)
+_B = None       # terminal background (transparent)
+
+_PIXEL_ROWS: list[list[str | None]] = [
+    # rows 0-1: headphone arch
+    [_B, _B, _T, _T, _T, _T, _T, _T, _T, _T, _T, _T, _T, _T, _T, _T, _T, _T, _B, _B],
+    [_B, _T, _T, _B, _D, _D, _D, _D, _D, _D, _D, _D, _D, _D, _D, _D, _B, _T, _T, _B],
+    # rows 2-3: ear cups (extend down) + face upper (eyes)
+    [_T, _T, _B, _D, _P, _P, _P, _P, _P, _P, _P, _P, _P, _P, _P, _P, _D, _B, _T, _T],
+    [_T, _T, _B, _D, _P, _D, _D, _P, _P, _P, _P, _P, _P, _D, _D, _P, _D, _B, _T, _T],
+    # rows 4-5: ear cups (extend down) + cheeks + snout top
+    [_T, _T, _B, _D, _P, _P, _P, _P, _P, _P, _P, _P, _P, _P, _P, _P, _D, _B, _T, _T],
+    [_T, _T, _B, _D, _P, _P, _P, _S, _S, _S, _S, _S, _S, _P, _P, _P, _D, _B, _T, _T],
+    # rows 6-7: ear cups taper off + nostrils
+    [_B, _T, _B, _D, _P, _P, _P, _S, _D, _S, _S, _D, _S, _P, _P, _P, _D, _B, _T, _B],
+    [_B, _B, _B, _D, _P, _P, _P, _S, _S, _S, _S, _S, _S, _P, _P, _P, _D, _B, _B, _B],
+    # rows 8-9: lower face
+    [_B, _B, _B, _D, _P, _P, _P, _P, _P, _P, _P, _P, _P, _P, _P, _P, _D, _B, _B, _B],
+    [_B, _B, _B, _B, _D, _P, _P, _P, _P, _P, _P, _P, _P, _P, _P, _D, _B, _B, _B, _B],
+    # rows 10-11: chin / base
+    [_B, _B, _B, _B, _B, _D, _P, _P, _P, _P, _P, _P, _P, _P, _D, _B, _B, _B, _B, _B],
+    [_B, _B, _B, _B, _B, _B, _D, _D, _D, _D, _D, _D, _D, _D, _B, _B, _B, _B, _B, _B],
+]
+
+
+def _cell(top: str | None, bot: str | None) -> str:
+    if top is None and bot is None:
+        return ' '
+    if top is not None and bot is None:
+        return f'[{top}]▀[/]'
+    if top is None and bot is not None:
+        return f'[{bot}]▄[/]'
+    if top == bot:
+        return f'[{top}]█[/]'
+    return f'[{top} on {bot}]▀[/]'
+
+
+def _render_banner() -> str:
+    lines = []
+    for i in range(0, 12, 2):
+        row = _PIXEL_ROWS[i]
+        row_below = _PIXEL_ROWS[i + 1]
+        lines.append(''.join(_cell(row[c], row_below[c]) for c in range(20)))
+    lines.append('[bold #E8A820]lazy-[/][bold #4A9E9E]take-notes[/]')
+    return '\n'.join(lines)
+
+
+_BANNER_TEXT = _render_banner()
+
 
 class ModeItem(ListItem):
     """Selectable row representing a launch mode."""
@@ -28,14 +81,14 @@ class ModeItem(ListItem):
 
 class WelcomePicker(App[str | None]):
     CSS = """
-    #welcome-header {
-        dock: top;
-        height: 1;
-        background: $primary;
-        color: $text;
+    Screen {
+        align: center middle;
+    }
+    #welcome-banner {
         text-align: center;
-        text-style: bold;
-        padding: 0 1;
+        width: 100%;
+        height: auto;
+        padding: 1 0 0 0;
     }
     #welcome-footer {
         dock: bottom;
@@ -48,6 +101,8 @@ class WelcomePicker(App[str | None]):
     #welcome-list {
         border: solid $primary;
         margin: 1 2;
+        height: auto;
+        max-height: 8;
     }
     #welcome-list Static {
         height: 1;
@@ -62,13 +117,13 @@ class WelcomePicker(App[str | None]):
     ]
 
     def compose(self) -> ComposeResult:
-        yield Static('  lazy-take-notes', id='welcome-header')
+        yield Static(_BANNER_TEXT, id='welcome-banner', markup=True)
         yield ListView(
             *[ModeItem(m, l, d) for m, l, d in _MODES],
             id='welcome-list',
         )
         yield Static(
-            '\\[Enter] Select  \\[\u2191/\u2193] Navigate  \\[Esc] Cancel',
+            '\\[Enter] Select  \\[↑/↓] Navigate  \\[Esc] Cancel',
             id='welcome-footer',
             markup=True,
         )
