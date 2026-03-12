@@ -91,7 +91,11 @@ class TranscribeApp(BaseApp):
             overlap=tc.overlap,
             silence_threshold=tc.silence_threshold,
             pause_duration=tc.pause_duration,
-            recognition_hints=self._template.recognition_hints,
+            recognition_hints=list(
+                dict.fromkeys(
+                    self._config.recognition_hints + self._template.recognition_hints,
+                )
+            ),
             transcriber=self._transcriber,
         )
 

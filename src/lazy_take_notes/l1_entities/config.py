@@ -46,3 +46,4 @@ class AppConfig(BaseModel):
     digest: DigestConfig
     interactive: InteractiveConfig
     output: OutputConfig
+    recognition_hints: list[str] = Field(default_factory=list)
