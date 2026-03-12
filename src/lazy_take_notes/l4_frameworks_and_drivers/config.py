@@ -31,6 +31,7 @@ APP_CONFIG_DEFAULTS: dict = {
         'directory': './output',
         'save_audio': True,
     },
+    'recognition_hints': [],
 }
 
 

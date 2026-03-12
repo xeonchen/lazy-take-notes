@@ -76,6 +76,10 @@ ollama:
 #   api_key: sk-...               # or set OPENAI_API_KEY env var
 #   base_url: "https://api.openai.com/v1"
 
+recognition_hints:                  # global hints for the speech recogniser
+  - "Kubernetes"                    # applied to every template (merged with per-template hints)
+  - "JIRA"
+
 transcription:
   model: "large-v3-turbo-q8_0"    # default whisper model
   models:                         # per-locale overrides

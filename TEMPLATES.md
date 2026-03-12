@@ -82,6 +82,8 @@ quick_actions:                  # up to 5 entries; bound to keys 1–5 by positi
 
 An optional list of hint strings passed to the speech recogniser's context. Use it to bias recognition towards domain vocabulary (names, acronyms, technical terms) that the recogniser might otherwise mishear. Each entry is a separate word or short phrase.
 
+These are merged with the global `recognition_hints` list from `config.yaml` (global hints first, then template hints). Duplicates are removed automatically.
+
 ### `locale`
 
 BCP 47 locale (e.g. `zh-TW`, `en-US`). Controls:
