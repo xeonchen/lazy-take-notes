@@ -87,9 +87,10 @@ class FilePicker(SearchablePicker):
         self._highlighted_dir: Path | None = None
 
     def on_mount(self) -> None:
-        # Override base: focus the list instead of the search input
+        # Defer focus so it fires after SearchablePicker.on_mount (which focuses #sp-search).
+        # Both on_mount handlers run in Textual's event system; call_after_refresh wins.
         self._rebuild_list()
-        self.query_one('#sp-list', _FileListView).focus()
+        self.call_after_refresh(self.query_one('#sp-list', _FileListView).focus)
 
     def _make_list_view(self) -> _FileListView:
         return _FileListView(id='sp-list')
