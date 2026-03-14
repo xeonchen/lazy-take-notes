@@ -119,7 +119,7 @@ class WelcomePicker(App[str | None]):
     def compose(self) -> ComposeResult:
         yield Static(_BANNER_TEXT, id='welcome-banner', markup=True)
         yield ListView(
-            *[ModeItem(m, l, d) for m, l, d in _MODES],
+            *[ModeItem(mode, label, desc) for mode, label, desc in _MODES],
             id='welcome-list',
         )
         yield Static(
