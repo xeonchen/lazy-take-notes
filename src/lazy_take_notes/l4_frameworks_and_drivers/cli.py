@@ -108,10 +108,7 @@ def cli(ctx, config_path, output_dir):
     if mode == 'record':
         ctx.invoke(record)
     elif mode == 'transcribe':
-        from lazy_take_notes.l4_frameworks_and_drivers.pickers.file_picker import FilePicker  # noqa: PLC0415 -- deferred: Textual not loaded on --help
-        selected = FilePicker().run()
-        if selected is not None:
-            ctx.invoke(transcribe, audio_file=str(selected))
+        ctx.invoke(transcribe)
     elif mode == 'view':
         ctx.invoke(view)
 
@@ -188,7 +185,10 @@ def record(ctx, label):
 def transcribe(ctx, audio_file, label):
     """Transcribe an audio file with streaming TUI and generate a final digest."""
     if audio_file is None:
-        from lazy_take_notes.l4_frameworks_and_drivers.pickers.file_picker import FilePicker  # noqa: PLC0415 -- deferred: Textual not loaded on --help
+        from lazy_take_notes.l4_frameworks_and_drivers.pickers.file_picker import (
+            FilePicker,  # noqa: PLC0415 -- deferred: Textual not loaded on --help
+        )
+
         selected = FilePicker().run()
         if selected is None:
             return
