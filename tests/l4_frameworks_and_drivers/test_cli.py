@@ -26,6 +26,7 @@ _BUILD = 'lazy_take_notes.l4_frameworks_and_drivers.config.build_app_config'
 _INFRA = 'lazy_take_notes.l4_frameworks_and_drivers.config.InfraConfig'
 _PICKER = 'lazy_take_notes.l4_frameworks_and_drivers.pickers.template_picker.TemplatePicker'
 _SESSION_PICKER = 'lazy_take_notes.l4_frameworks_and_drivers.pickers.session_picker.SessionPicker'
+_FILE_PICKER = 'lazy_take_notes.l4_frameworks_and_drivers.pickers.file_picker.FilePicker'
 _WELCOME_PICKER = 'lazy_take_notes.l4_frameworks_and_drivers.pickers.welcome_picker.WelcomePicker'
 _CLI = 'lazy_take_notes.l4_frameworks_and_drivers.cli'
 
@@ -157,15 +158,137 @@ class TestCliGroup:
         assert result.exit_code == 0
         assert __version__ in result.output
 
-    def test_no_subcommand_launches_welcome_picker(self):
-        """Running with no subcommand launches WelcomePicker; None return exits cleanly."""
+    def test_no_subcommand_opens_welcome_picker_then_exits(self):
+        """Running `lazy-take-notes` with no subcommand opens the WelcomePicker."""
         runner = CliRunner()
         mock_welcome = MagicMock()
-        mock_welcome.run.return_value = None
+        mock_welcome.run.return_value = None  # user cancels
+
         with patch(_WELCOME_PICKER, return_value=mock_welcome):
             result = runner.invoke(cli, [])
+
         assert result.exit_code == 0
         mock_welcome.run.assert_called_once()
+
+    def test_welcome_picker_transcribe_cancel_exits_cleanly(self):
+        """WelcomePicker selects transcribe; FilePicker cancelled → clean exit."""
+        runner = CliRunner()
+        mock_welcome = MagicMock()
+        mock_welcome.run.return_value = 'transcribe'
+        mock_file_picker = MagicMock()
+        mock_file_picker.run.return_value = None  # user cancels
+
+        with (
+            patch(_WELCOME_PICKER, return_value=mock_welcome),
+            patch(_FILE_PICKER, return_value=mock_file_picker),
+        ):
+            result = runner.invoke(cli, [])
+
+        assert result.exit_code == 0
+        mock_file_picker.run.assert_called_once()
+
+    def test_welcome_picker_transcribe_proceeds_to_app(self, tmp_path: Path):
+        """WelcomePicker selects transcribe; FilePicker picks file → TranscribeApp runs."""
+        runner = CliRunner()
+        audio_file = tmp_path / 'audio.wav'
+        audio_file.touch()
+
+        mock_welcome = MagicMock()
+        mock_welcome.run.return_value = 'transcribe'
+        mock_file_picker = MagicMock()
+        mock_file_picker.run.return_value = audio_file
+
+        mock_template_picker = MagicMock()
+        mock_template_picker.run.return_value = ('default_en', MagicMock())
+
+        mock_template_loader = MagicMock()
+        mock_template_loader.load.return_value = MagicMock(
+            metadata=MagicMock(locale='en-US'),
+            quick_actions=[],
+            recognition_hints=[],
+        )
+
+        with (
+            patch(_WELCOME_PICKER, return_value=mock_welcome),
+            patch(_FILE_PICKER, return_value=mock_file_picker),
+            patch(_YAML_CFG) as mock_config_cls,
+            patch(_YAML_TPL, return_value=mock_template_loader),
+            patch(_BUILD) as mock_build,
+            patch(_INFRA),
+            patch(_PICKER, return_value=mock_template_picker),
+            patch(f'{_CLI}._preflight_llm', return_value=([], [])),
+            patch('lazy_take_notes.l4_frameworks_and_drivers.apps.transcribe.TranscribeApp') as mock_app_cls,
+            patch('lazy_take_notes.l4_frameworks_and_drivers.container.DependencyContainer'),
+        ):
+            mock_config_cls.return_value.load.return_value = {}
+            mock_build.return_value = MagicMock(output=MagicMock(directory=str(tmp_path)))
+            result = runner.invoke(cli, [])
+
+        assert result.exit_code == 0
+        mock_app_cls.return_value.run.assert_called_once()
+
+    def test_welcome_picker_record_proceeds_to_app(self, tmp_path: Path):
+        """WelcomePicker selects record → RecordApp runs."""
+        runner = CliRunner()
+        mock_welcome = MagicMock()
+        mock_welcome.run.return_value = 'record'
+
+        mock_template_picker = MagicMock()
+        mock_template_picker.run.return_value = ('default_en', MagicMock())
+
+        mock_template_loader = MagicMock()
+        mock_template_loader.load.return_value = MagicMock(
+            metadata=MagicMock(locale='en-US'),
+            quick_actions=[],
+            recognition_hints=[],
+        )
+
+        with (
+            patch(_WELCOME_PICKER, return_value=mock_welcome),
+            patch(_YAML_CFG) as mock_config_cls,
+            patch(_YAML_TPL, return_value=mock_template_loader),
+            patch(_BUILD) as mock_build,
+            patch(_INFRA),
+            patch(_PICKER, return_value=mock_template_picker),
+            patch(f'{_CLI}._preflight_llm', return_value=([], [])),
+            patch(f'{_CLI}._preflight_microphone'),
+            patch('lazy_take_notes.l4_frameworks_and_drivers.apps.record.RecordApp') as mock_app_cls,
+            patch('lazy_take_notes.l4_frameworks_and_drivers.container.DependencyContainer'),
+        ):
+            mock_config_cls.return_value.load.return_value = {}
+            mock_build.return_value = MagicMock(output=MagicMock(directory=str(tmp_path)))
+            result = runner.invoke(cli, [])
+
+        assert result.exit_code == 0
+        mock_app_cls.return_value.run.assert_called_once()
+
+    def test_welcome_picker_view_proceeds_to_app(self, tmp_path: Path):
+        """WelcomePicker selects view → ViewApp runs."""
+        runner = CliRunner()
+        session_dir = tmp_path / '2026-02-22_120000'
+        session_dir.mkdir()
+
+        mock_welcome = MagicMock()
+        mock_welcome.run.return_value = 'view'
+
+        mock_session_picker = MagicMock()
+        mock_session_picker.run.side_effect = [session_dir, None]
+
+        with (
+            patch(_WELCOME_PICKER, return_value=mock_welcome),
+            patch(_YAML_CFG) as mock_config_cls,
+            patch(_YAML_TPL),
+            patch(_BUILD) as mock_build,
+            patch(_INFRA),
+            patch(_SESSION_PICKER, return_value=mock_session_picker),
+            patch('lazy_take_notes.l4_frameworks_and_drivers.apps.view.ViewApp') as mock_app_cls,
+        ):
+            mock_config_cls.return_value.load.return_value = {}
+            mock_build.return_value = MagicMock(output=MagicMock(directory=str(tmp_path)))
+            result = runner.invoke(cli, [])
+
+        assert result.exit_code == 0
+        mock_app_cls.return_value.run.assert_called_once()
 
     def test_config_file_not_found_exits_1(self):
         runner = CliRunner()
@@ -362,6 +485,55 @@ class TestTranscribeSubcommand:
 
         mock_app_cls.return_value.run.assert_called_once()
 
+    def test_no_audio_file_opens_file_picker_cancel_exits_cleanly(self):
+        """transcribe with no args opens FilePicker; cancelling exits cleanly."""
+        runner = CliRunner()
+        mock_file_picker = MagicMock()
+        mock_file_picker.run.return_value = None  # user cancels
+
+        with patch(_FILE_PICKER, return_value=mock_file_picker):
+            result = runner.invoke(cli, ['transcribe'])
+
+        assert result.exit_code == 0
+        mock_file_picker.run.assert_called_once()
+
+    def test_no_audio_file_opens_file_picker_proceeds_to_app(self, tmp_path: Path):
+        """transcribe with no args opens FilePicker; selecting a file runs TranscribeApp."""
+        runner = CliRunner()
+        audio_file = tmp_path / 'audio.wav'
+        audio_file.touch()
+
+        mock_file_picker = MagicMock()
+        mock_file_picker.run.return_value = audio_file
+
+        mock_template_picker = MagicMock()
+        mock_template_picker.run.return_value = ('default_en', MagicMock())
+
+        mock_template_loader = MagicMock()
+        mock_template_loader.load.return_value = MagicMock(
+            metadata=MagicMock(locale='en-US'),
+            quick_actions=[],
+            recognition_hints=[],
+        )
+
+        with (
+            patch(_FILE_PICKER, return_value=mock_file_picker),
+            patch(_YAML_CFG) as mock_config_cls,
+            patch(_YAML_TPL, return_value=mock_template_loader),
+            patch(_BUILD) as mock_build,
+            patch(_INFRA),
+            patch(_PICKER, return_value=mock_template_picker),
+            patch(f'{_CLI}._preflight_llm', return_value=([], [])),
+            patch('lazy_take_notes.l4_frameworks_and_drivers.apps.transcribe.TranscribeApp') as mock_app_cls,
+            patch('lazy_take_notes.l4_frameworks_and_drivers.container.DependencyContainer'),
+        ):
+            mock_config_cls.return_value.load.return_value = {}
+            mock_build.return_value = MagicMock(output=MagicMock(directory=str(tmp_path)))
+            runner.invoke(cli, ['transcribe'])
+
+        mock_file_picker.run.assert_called_once()
+        mock_app_cls.return_value.run.assert_called_once()
+
 
 class TestViewSubcommand:
     def test_picker_returns_none_exits_cleanly(self, tmp_path: Path):
@@ -404,103 +576,3 @@ class TestViewSubcommand:
             runner.invoke(cli, ['view'])
 
         mock_app_cls.return_value.run.assert_called_once()
-
-
-class TestWelcomePickerDispatch:
-    """Tests for the no-subcommand WelcomePicker dispatch (lines 100–114 in cli.py)."""
-
-    def test_record_dispatches_to_record_subcommand(self, tmp_path: Path):
-        """WelcomePicker returning 'record' invokes the record subcommand."""
-        runner = CliRunner()
-        mock_welcome = MagicMock()
-        mock_welcome.run.return_value = 'record'
-
-        mock_picker = MagicMock()
-        mock_picker.run.return_value = ('default_en', MagicMock())
-
-        mock_template_loader = MagicMock()
-        mock_template_loader.load.return_value = MagicMock(
-            metadata=MagicMock(locale='en-US'),
-            quick_actions=[],
-            recognition_hints=[],
-        )
-
-        with (
-            patch(_WELCOME_PICKER, return_value=mock_welcome),
-            patch(_YAML_CFG) as mock_config_cls,
-            patch(_YAML_TPL, return_value=mock_template_loader),
-            patch(_BUILD) as mock_build,
-            patch(_INFRA),
-            patch(_PICKER, return_value=mock_picker),
-            patch(f'{_CLI}._preflight_llm', return_value=([], [])),
-            patch(f'{_CLI}._preflight_microphone'),
-            patch('lazy_take_notes.l4_frameworks_and_drivers.apps.record.RecordApp') as mock_app_cls,
-            patch('lazy_take_notes.l4_frameworks_and_drivers.container.DependencyContainer'),
-        ):
-            mock_config_cls.return_value.load.return_value = {}
-            mock_build.return_value = MagicMock(output=MagicMock(directory=str(tmp_path)))
-            result = runner.invoke(cli, [])
-
-        assert result.exit_code == 0
-        mock_app_cls.return_value.run.assert_called_once()
-
-    def test_transcribe_prompts_for_file_then_invokes_transcribe(self, tmp_path: Path):
-        """WelcomePicker returning 'transcribe' prompts for a file path, then runs TranscribeApp."""
-        runner = CliRunner()
-        audio_file = tmp_path / 'audio.wav'
-        audio_file.touch()
-
-        mock_welcome = MagicMock()
-        mock_welcome.run.return_value = 'transcribe'
-
-        mock_picker = MagicMock()
-        mock_picker.run.return_value = ('default_en', MagicMock())
-
-        mock_template_loader = MagicMock()
-        mock_template_loader.load.return_value = MagicMock(
-            metadata=MagicMock(locale='en-US'),
-            quick_actions=[],
-            recognition_hints=[],
-        )
-
-        with (
-            patch(_WELCOME_PICKER, return_value=mock_welcome),
-            patch(_YAML_CFG) as mock_config_cls,
-            patch(_YAML_TPL, return_value=mock_template_loader),
-            patch(_BUILD) as mock_build,
-            patch(_INFRA),
-            patch(_PICKER, return_value=mock_picker),
-            patch(f'{_CLI}._preflight_llm', return_value=([], [])),
-            patch('lazy_take_notes.l4_frameworks_and_drivers.apps.transcribe.TranscribeApp') as mock_app_cls,
-            patch('lazy_take_notes.l4_frameworks_and_drivers.container.DependencyContainer'),
-        ):
-            mock_config_cls.return_value.load.return_value = {}
-            mock_build.return_value = MagicMock(output=MagicMock(directory=str(tmp_path)))
-            result = runner.invoke(cli, [], input=f'{audio_file}\n')
-
-        assert result.exit_code == 0
-        mock_app_cls.return_value.run.assert_called_once()
-
-    def test_view_invokes_view_subcommand(self, tmp_path: Path):
-        """WelcomePicker returning 'view' invokes the view subcommand."""
-        runner = CliRunner()
-        mock_welcome = MagicMock()
-        mock_welcome.run.return_value = 'view'
-
-        mock_session_picker = MagicMock()
-        mock_session_picker.run.return_value = None
-
-        with (
-            patch(_WELCOME_PICKER, return_value=mock_welcome),
-            patch(_YAML_CFG) as mock_config_cls,
-            patch(_YAML_TPL),
-            patch(_BUILD) as mock_build,
-            patch(_INFRA),
-            patch(_SESSION_PICKER, return_value=mock_session_picker),
-        ):
-            mock_config_cls.return_value.load.return_value = {}
-            mock_build.return_value = MagicMock(output=MagicMock(directory=str(tmp_path)))
-            result = runner.invoke(cli, [])
-
-        assert result.exit_code == 0
-        mock_session_picker.run.assert_called_once()
