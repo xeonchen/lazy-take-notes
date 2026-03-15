@@ -48,8 +48,8 @@ class SearchablePicker(App):  # type: ignore[type-arg]
         Binding('enter', 'select_item', 'Select', priority=True),
     ]
 
-    CSS = """
-    #sp-header  { dock: top; height: 1; background: $primary; color: $text; text-style: bold; padding: 0 1; }
+    DEFAULT_CSS = """
+    #sp-header  { dock: top; height: 1; background: $primary; color: $text; text-align: center; text-style: bold; padding: 0 1; }
     #sp-footer  { dock: bottom; height: 1; background: $surface; color: $text-muted; text-align: center; padding: 0 1; }
     #sp-layout  { height: 1fr; }
     #sp-list-pane { width: 1fr; min-width: 24; }
