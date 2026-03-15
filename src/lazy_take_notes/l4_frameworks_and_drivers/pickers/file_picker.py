@@ -87,8 +87,9 @@ class FilePicker(SearchablePicker):
         self._highlighted_dir: Path | None = None
 
     def on_mount(self) -> None:
-        # Defer focus so it fires after SearchablePicker.on_mount (which focuses #sp-search).
-        # Both on_mount handlers run in Textual's event system; call_after_refresh wins.
+        # Override base on_mount entirely: FilePicker starts with the list focused,
+        # not the search input. call_after_refresh defers focus until after the
+        # first render so the widget is ready to receive it.
         self._rebuild_list()
         self.call_after_refresh(self.query_one('#sp-list', _FileListView).focus)
 
@@ -142,6 +143,8 @@ class FilePicker(SearchablePicker):
 
     def _navigate_to(self, directory: Path) -> None:
         self._current_dir = directory
+        # Navigating to a new directory invalidates any in-flight dir counts.
+        self._highlighted_dir = None
         self._refresh_header()
         query = self.query_one('#sp-search', Input).value.strip().lower()
         self._rebuild_list(query)
@@ -163,9 +166,12 @@ class FilePicker(SearchablePicker):
 
     def _update_info(self, item: ListItem | None) -> None:
         if item is None:
+            self._highlighted_dir = None
             self._set_info('')
             return
         if isinstance(item, ParentItem):
+            # No directory being counted; invalidate any in-flight DirCountReady.
+            self._highlighted_dir = None
             parent = self._current_dir.parent
             self._set_info(f'[bold]..[/bold]\nParent directory\n{parent}')
         elif isinstance(item, DirItem):
@@ -188,6 +194,8 @@ class FilePicker(SearchablePicker):
 
             self.run_worker(_count, thread=True, exclusive=True, group='dir-count')
         elif isinstance(item, FileItem):
+            # File highlighted; any outstanding dir count is now stale.
+            self._highlighted_dir = None
             stat = item.path.stat()
             modified = datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M')
             size = _human_size(stat.st_size)
