@@ -73,7 +73,7 @@ def _pre_init_resource_tracker() -> None:  # pragma: no cover -- best-effort pla
         pass
 
 
-@click.group()
+@click.group(invoke_without_command=True)
 @click.option(
     '-c',
     '--config',
@@ -96,6 +96,23 @@ def cli(ctx, config_path, output_dir):
     ctx.ensure_object(dict)
     ctx.obj['config_path'] = config_path
     ctx.obj['output_dir'] = output_dir
+
+    _pre_init_resource_tracker()
+
+    if ctx.invoked_subcommand is not None:
+        return
+
+    from lazy_take_notes.l4_frameworks_and_drivers.pickers.welcome_picker import (  # noqa: PLC0415 -- deferred: Textual not loaded on --help
+        WelcomePicker,
+    )
+
+    mode = WelcomePicker().run()
+    if mode == 'record':
+        ctx.invoke(record)
+    elif mode == 'transcribe':
+        ctx.invoke(transcribe)
+    elif mode == 'view':
+        ctx.invoke(view)
 
 
 @cli.command()
@@ -141,8 +158,6 @@ def record(ctx, label):
         DependencyContainer,
     )
 
-    _pre_init_resource_tracker()
-
     container = DependencyContainer(config, template, out_dir, infra=infra, audio_mode=audio_mode)
     app = RecordApp(
         config=config,
@@ -159,7 +174,7 @@ def record(ctx, label):
 
 
 @cli.command()
-@click.argument('audio_file', type=click.Path(exists=True, dir_okay=False))
+@click.argument('audio_file', type=click.Path(dir_okay=False), required=False, default=None)
 @click.option(
     '-l',
     '--label',
@@ -169,6 +184,19 @@ def record(ctx, label):
 @click.pass_context
 def transcribe(ctx, audio_file, label):
     """Transcribe an audio file with streaming TUI and generate a final digest."""
+    if audio_file is None:
+        from lazy_take_notes.l4_frameworks_and_drivers.pickers.file_picker import (
+            FilePicker,  # noqa: PLC0415 -- deferred: Textual not loaded on --help
+        )
+
+        selected = FilePicker().run()
+        if selected is None:
+            return
+        audio_file = str(selected)
+    if not Path(audio_file).is_file():
+        click.echo(f'Error: {audio_file!r} is not a valid file.', err=True)
+        sys.exit(1)
+
     from lazy_take_notes.l4_frameworks_and_drivers.pickers.template_picker import (  # noqa: PLC0415 -- deferred: Textual not loaded on --help
         TemplatePicker,
     )
@@ -200,8 +228,6 @@ def transcribe(ctx, audio_file, label):
     from lazy_take_notes.l4_frameworks_and_drivers.container import (  # noqa: PLC0415 -- deferred: Textual TUI not loaded for --help
         DependencyContainer,
     )
-
-    _pre_init_resource_tracker()
 
     container = DependencyContainer(config, template, out_dir, infra=infra, audio_mode=None)
     app = TranscribeApp(
