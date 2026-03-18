@@ -50,12 +50,29 @@ section "4 / 5  take-note command"
 BREW_BIN="$(brew --prefix)/bin"
 TAKE_NOTE_BIN="$BREW_BIN/take-note"
 
+# Clean up stale alias from previous setup versions
+SHELL_RC="$HOME/.zshrc"
+if grep -q "alias take-note=" "$SHELL_RC" 2>/dev/null; then
+  sed -i '' '/# lazy-take-notes/d;/alias take-note=/d' "$SHELL_RC"
+  info "Removed old alias from $SHELL_RC"
+fi
+
+UVX_PATH="$(command -v uvx 2>/dev/null)"
+if [ -z "$UVX_PATH" ]; then
+  echo -e "  ${YELLOW}⚠${RESET}  uvx not found in PATH — install uv first"
+  exit 1
+fi
+
 if [ -f "$TAKE_NOTE_BIN" ]; then
   ok "Already exists at $TAKE_NOTE_BIN"
 else
+  if ! touch "$TAKE_NOTE_BIN" 2>/dev/null; then
+    echo -e "  ${YELLOW}⚠${RESET}  Cannot write to $BREW_BIN — re-run with: sudo bash setup.sh"
+    exit 1
+  fi
   cat > "$TAKE_NOTE_BIN" << EOF
-#!/bin/bash
-exec "$BREW_BIN/uvx" --from git+https://github.com/CJHwong/lazy-meeting-note.git lazy-take-notes "\$@"
+#!/bin/zsh
+exec "$UVX_PATH" --from git+https://github.com/CJHwong/lazy-take-notes.git lazy-take-notes "\$@"
 EOF
   chmod +x "$TAKE_NOTE_BIN"
   ok "Created 'take-note' command at $TAKE_NOTE_BIN"
