@@ -106,13 +106,20 @@ def cli(ctx, config_path, output_dir):
         WelcomePicker,
     )
 
-    mode = WelcomePicker().run()
-    if mode == 'record':
-        ctx.invoke(record)
-    elif mode == 'transcribe':
-        ctx.invoke(transcribe)
-    elif mode == 'view':
-        ctx.invoke(view)
+    while True:
+        mode = WelcomePicker().run()
+        if mode == 'record':
+            ctx.invoke(record)
+            return
+        elif mode == 'transcribe':
+            ctx.invoke(transcribe)
+            return
+        elif mode == 'view':
+            ctx.invoke(view)
+        elif mode == 'config':
+            ctx.invoke(config)
+        else:
+            return
 
 
 @cli.command()
@@ -269,6 +276,17 @@ def view(ctx):
 
         app = ViewApp(session_dir=session_dir)
         app.run()
+
+
+@cli.command()
+@click.pass_context
+def config(ctx):
+    """Open the configuration editor."""
+    from lazy_take_notes.l4_frameworks_and_drivers.apps.config import (  # noqa: PLC0415 -- deferred: Textual TUI not loaded for --help
+        ConfigApp,
+    )
+
+    ConfigApp().run()
 
 
 def _preflight_llm(infra, config) -> tuple[list[str], list[str]]:

@@ -10,6 +10,7 @@ _MODES = [
     ('record', 'Record', 'Live transcription with AI digest'),
     ('transcribe', 'Transcribe', 'Transcribe an existing audio file'),
     ('view', 'View', 'Browse previously saved sessions'),
+    ('config', 'Settings', 'Edit app configuration'),
 ]
 
 # Color palette
