@@ -15,7 +15,6 @@ from textual.events import AppFocus, Key
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, ListItem, Markdown, Static
 
-from lazy_take_notes.l1_entities.audio_mode import AudioMode
 from lazy_take_notes.l1_entities.template import SessionTemplate
 from lazy_take_notes.l3_interface_adapters.gateways.yaml_template_loader import (
     YamlTemplateLoader,
@@ -114,18 +113,6 @@ class _ConfirmDeleteScreen(ModalScreen[bool]):
         self.dismiss(False)
 
 
-_MODE_LABELS = {
-    AudioMode.MIC_ONLY: 'mic only [dim](voice)[/dim]',
-    AudioMode.SYSTEM_ONLY: 'system only [dim](speakers)[/dim]',
-    AudioMode.MIX: 'mix [dim](voice + speakers)[/dim]',
-}
-_MODE_CYCLE = [
-    AudioMode.MIC_ONLY,
-    AudioMode.SYSTEM_ONLY,
-    AudioMode.MIX,
-]
-
-
 class LocaleHeader(ListItem):
     """Non-interactive group header showing a locale name (e.g. 'EN')."""
 
@@ -157,21 +144,17 @@ class _TemplateListView(PickerListView):
     _selectable_type = TemplateItem
 
 
-class TemplatePicker(SearchablePicker[tuple[str, AudioMode]]):
+class TemplatePicker(SearchablePicker[str]):
     CSS = """
     #sp-list-pane { max-width: 40; }
     """
 
-    def __init__(self, show_audio_mode: bool = True, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
         loader = YamlTemplateLoader()
         self._user_names = user_template_names()
         self._templates: dict[str, SessionTemplate] = {name: loader.load(name) for name in sorted(all_template_names())}
         self._current_name: str | None = None
-        self._audio_mode: AudioMode = AudioMode.MIC_ONLY
-        # Show audio mode selector when the caller opts in
-        # (batch/--audio-file mode passes show_audio_mode=False since audio_mode is irrelevant)
-        self._show_audio_mode = show_audio_mode
         # Set after [e] edit — cleared on AppFocus reload so GUI editors
         # (which return from subprocess.run immediately) get a second reload
         # when the user switches back to the terminal.
@@ -187,25 +170,12 @@ class TemplatePicker(SearchablePicker[tuple[str, AudioMode]]):
         return f'  Select a template ({len(self._templates)} available)'
 
     def _footer_text(self) -> str:
-        base = r'\[Enter] Select  \[↑/↓] Navigate'
-        if self._show_audio_mode:
-            label = _MODE_LABELS[self._audio_mode]
-            base += rf'  \[d] Audio: {label}'
-            if self._audio_mode == AudioMode.MIX:
-                base += '  [dim]tip: use headphones if you hear echo[/dim]'
-        base += r'  \[n] New  \[e] Edit  \[x] Delete  \[Esc] Cancel'
-        return base
+        return r'\[Enter] Select  \[↑/↓] Navigate  \[n] New  \[e] Edit  \[x] Delete  \[Esc] Cancel'
 
     def _search_placeholder(self) -> str:
         return 'Filter templates...'
 
     def on_key(self, event: Key) -> None:
-        # [d] cycles audio mode only when the list (not the search Input) has focus.
-        # Input swallows printable keys before bindings fire, so we guard here.
-        if event.key == 'd' and self._show_audio_mode and not isinstance(self.focused, Input):
-            self.action_cycle_audio_mode()
-            event.prevent_default()
-            return
         if event.key == 'e' and not isinstance(self.focused, Input):
             self.action_edit_template()
             event.prevent_default()
@@ -222,7 +192,7 @@ class TemplatePicker(SearchablePicker[tuple[str, AudioMode]]):
 
     def action_new_template(self) -> None:
         """Exit picker with a sentinel value to launch the template builder."""
-        self.exit(('__create_template__', self._audio_mode))
+        self.exit('__create_template__')
 
     def _rebuild_list(self, query: str = '') -> None:
         """Rebuild the ListView contents, optionally filtered by *query*."""
@@ -370,14 +340,7 @@ class TemplatePicker(SearchablePicker[tuple[str, AudioMode]]):
                 list_view.index = idx
                 break
 
-    def action_cycle_audio_mode(self) -> None:
-        if not self._show_audio_mode:
-            return
-        idx = _MODE_CYCLE.index(self._audio_mode)
-        self._audio_mode = _MODE_CYCLE[(idx + 1) % len(_MODE_CYCLE)]
-        self.query_one('#sp-footer', Static).update(self._footer_text())
-
     def action_select_item(self) -> None:
         if self._current_name is None:
             return
-        self.exit((self._current_name, self._audio_mode))
+        self.exit(self._current_name)

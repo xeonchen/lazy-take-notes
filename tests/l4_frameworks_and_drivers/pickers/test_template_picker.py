@@ -10,7 +10,6 @@ import pytest
 from textual.widgets import Input, ListView, Markdown
 
 import lazy_take_notes.l3_interface_adapters.gateways.yaml_template_loader as yaml_loader_mod
-from lazy_take_notes.l1_entities.audio_mode import AudioMode
 from lazy_take_notes.l3_interface_adapters.gateways.yaml_template_loader import all_template_names
 from lazy_take_notes.l4_frameworks_and_drivers.pickers.template_picker import (
     TemplatePicker,
@@ -54,76 +53,8 @@ class TestTemplatePicker:
             await pilot.pause()
 
         assert picker.return_value is not None
-        name, mode = picker.return_value
-        assert name in all_template_names()
-        assert isinstance(mode, AudioMode)
-
-    @pytest.mark.asyncio
-    async def test_enter_returns_audio_mode_in_result(self):
-        picker = TemplatePicker()
-        async with picker.run_test() as pilot:
-            await pilot.press('enter')
-            await pilot.pause()
-
-        assert picker.return_value is not None
-        _name, mode = picker.return_value
-        assert mode == AudioMode.MIC_ONLY
-
-    @pytest.mark.asyncio
-    async def test_d_cycles_audio_mode(self):
-        picker = TemplatePicker()
-        async with picker.run_test() as pilot:
-            # [d] only fires when the list has focus (not the search Input)
-            await pilot.press('tab')
-            await pilot.pause()
-            assert picker._audio_mode == AudioMode.MIC_ONLY
-            await pilot.press('d')
-            await pilot.pause()
-            assert picker._audio_mode == AudioMode.SYSTEM_ONLY
-            await pilot.press('d')
-            await pilot.pause()
-            assert picker._audio_mode == AudioMode.MIX
-            await pilot.press('d')
-            await pilot.pause()
-            assert picker._audio_mode == AudioMode.MIC_ONLY
-
-    @pytest.mark.asyncio
-    async def test_d_cycles_and_result_reflects_mode(self):
-        picker = TemplatePicker()
-        async with picker.run_test() as pilot:
-            await pilot.press('tab')  # move focus to list so [d] fires
-            await pilot.pause()
-            await pilot.press('d')
-            await pilot.pause()
-            await pilot.press('enter')
-            await pilot.pause()
-
-        assert picker.return_value is not None
-        _name, mode = picker.return_value
-        assert mode == AudioMode.SYSTEM_ONLY
-
-    @pytest.mark.asyncio
-    async def test_d_no_op_when_input_focused(self):
-        """[d] must not cycle audio mode when the search Input has focus (to allow typing)."""
-        picker = TemplatePicker()
-        async with picker.run_test() as pilot:
-            # Input is focused from on_mount — pressing 'd' types into the search box
-            assert isinstance(picker.focused, Input)
-            await pilot.press('d')
-            await pilot.pause()
-            assert picker._audio_mode == AudioMode.MIC_ONLY  # unchanged
-
-    @pytest.mark.asyncio
-    async def test_d_hidden_when_show_audio_mode_false(self):
-        picker = TemplatePicker(show_audio_mode=False)
-        async with picker.run_test() as pilot:
-            # Tab to list so any key handling fires — still no-op when audio mode hidden
-            await pilot.press('tab')
-            await pilot.pause()
-            before = picker._audio_mode
-            await pilot.press('d')
-            await pilot.pause()
-            assert picker._audio_mode == before
+        assert isinstance(picker.return_value, str)
+        assert picker.return_value in all_template_names()
 
     @pytest.mark.asyncio
     async def test_preview_updates_on_highlight(self):
@@ -201,8 +132,7 @@ class TestTemplatePicker:
             await pilot.pause()
 
         assert picker.return_value is not None
-        name, _mode = picker.return_value
-        assert name == 'default_en'
+        assert picker.return_value == 'default_en'
 
     @pytest.mark.asyncio
     async def test_down_focuses_list_from_search(self):
@@ -212,13 +142,6 @@ class TestTemplatePicker:
             await pilot.press('down')
             await pilot.pause()
             assert not isinstance(picker.focused, Input)
-
-    @pytest.mark.asyncio
-    async def test_cycle_noop_when_show_audio_mode_false(self):
-        picker = TemplatePicker(show_audio_mode=False)
-        async with picker.run_test():
-            picker.action_cycle_audio_mode()
-            assert picker._audio_mode == AudioMode.MIC_ONLY  # unchanged
 
     @pytest.mark.asyncio
     async def test_up_on_first_item_refocuses_search(self):

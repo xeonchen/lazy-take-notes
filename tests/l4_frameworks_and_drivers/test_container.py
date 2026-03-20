@@ -12,7 +12,7 @@ from lazy_take_notes.l4_frameworks_and_drivers.container import DependencyContai
 
 class TestDependencyContainer:
     @patch('lazy_take_notes.l4_frameworks_and_drivers.container.SubprocessWhisperTranscriber')
-    @patch('lazy_take_notes.l4_frameworks_and_drivers.container.SounddeviceAudioSource')
+    @patch('lazy_take_notes.l4_frameworks_and_drivers.container.DependencyContainer._build_mixed_source')
     def test_creates_all_components(self, mock_audio, mock_whisper, tmp_path: Path):
         config = build_app_config({})
         template = YamlTemplateLoader().load('default_zh_tw')
@@ -27,7 +27,7 @@ class TestDependencyContainer:
         assert container.controller is not None
 
     @patch('lazy_take_notes.l4_frameworks_and_drivers.container.SubprocessWhisperTranscriber')
-    @patch('lazy_take_notes.l4_frameworks_and_drivers.container.SounddeviceAudioSource')
+    @patch('lazy_take_notes.l4_frameworks_and_drivers.container.DependencyContainer._build_mixed_source')
     def test_openai_provider_creates_openai_client(self, mock_audio, mock_whisper, tmp_path: Path):
         from lazy_take_notes.l3_interface_adapters.gateways.openai_llm_client import OpenAICompatLLMClient
 

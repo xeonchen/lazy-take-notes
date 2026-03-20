@@ -9,7 +9,6 @@ import threading
 import time
 import wave
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 
@@ -60,54 +59,6 @@ def _start_processed_recorder(
     writer = threading.Thread(target=_writer, daemon=True)
     writer.start()
     return rec_q, writer
-
-
-def _start_raw_recorder(  # pragma: no cover -- requires sounddevice hardware
-    output_dir: Path,
-    is_cancelled,
-) -> tuple[Any, threading.Thread, queue.Queue]:
-    """Start a parallel high-quality audio stream that writes to a WAV file."""
-    import sounddevice as sd  # noqa: PLC0415 -- deferred: only used for raw WAV recording (mic mode)
-
-    device_info = sd.query_devices(kind='input')
-    native_sr = int(device_info['default_samplerate'])
-
-    wav_path = output_dir / 'recording.wav'
-    raw_q: queue.Queue[np.ndarray | None] = queue.Queue()
-
-    def _raw_callback(indata, frames, time_info, status):
-        raw_q.put(indata.copy())
-
-    stream = sd.InputStream(
-        samplerate=native_sr,
-        channels=1,
-        dtype='int16',
-        callback=_raw_callback,
-    )
-
-    def _wav_writer():
-        wf = wave.open(str(wav_path), 'wb')
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(native_sr)
-        try:
-            while True:
-                try:
-                    data = raw_q.get(timeout=0.5)
-                    if data is None:
-                        break
-                    wf.writeframes(data.tobytes())
-                except queue.Empty:
-                    if is_cancelled():
-                        break
-        finally:
-            wf.close()
-
-    writer = threading.Thread(target=_wav_writer, daemon=True)
-    writer.start()
-    stream.start()
-
-    return stream, writer, raw_q
 
 
 def run_audio_worker(
@@ -205,29 +156,13 @@ def run_audio_worker(
             _pending_meta = None
             post_message(TranscriptionStatus(active=False))
 
-    # Raw WAV recorder only makes sense for mic-based sources
-    from lazy_take_notes.l3_interface_adapters.gateways.sounddevice_audio_source import (  # noqa: PLC0415 -- deferred: sounddevice loaded only when worker starts
-        SounddeviceAudioSource,
-    )
-
-    raw_stream: Any = None
-    raw_writer: threading.Thread | None = None
-    raw_q: queue.Queue | None = None
     proc_rec_q: queue.Queue | None = None
     proc_rec_writer: threading.Thread | None = None
     if save_audio and output_dir:
-        if isinstance(audio_source, SounddeviceAudioSource):  # pragma: no cover -- only fires for real mic source
-            # Mic-only: capture a separate high-quality stream at native sample rate.
-            try:
-                raw_stream, raw_writer, raw_q = _start_raw_recorder(output_dir, is_cancelled)
-            except Exception:  # noqa: S110 — best-effort; recording continues without raw save
-                pass
-        else:
-            # Mixed or system-only: save the processed SAMPLE_RATE audio from read().
-            try:
-                proc_rec_q, proc_rec_writer = _start_processed_recorder(output_dir, SAMPLE_RATE)
-            except Exception:  # noqa: S110 -- best-effort; recording continues without raw save  # pragma: no cover
-                pass
+        try:
+            proc_rec_q, proc_rec_writer = _start_processed_recorder(output_dir, SAMPLE_RATE)
+        except Exception:  # noqa: S110 -- best-effort; recording continues without save  # pragma: no cover
+            pass
 
     # Start recording
     post_message(AudioWorkerStatus(status='recording'))
@@ -398,16 +333,7 @@ def run_audio_worker(
         log.error('Audio source error: %s', e, exc_info=True)
         post_message(AudioWorkerStatus(status='error', error=str(e)))
 
-    # Stop raw audio recorder (mic mode)
-    if raw_stream is not None:  # pragma: no cover -- only fires for real mic source
-        raw_stream.stop()
-        raw_stream.close()
-    if raw_q is not None:  # pragma: no cover -- only fires for real mic source
-        raw_q.put(None)
-    if raw_writer is not None:  # pragma: no cover -- only fires for real mic source
-        raw_writer.join(timeout=5)
-
-    # Stop processed audio recorder (mixed / system mode)
+    # Stop processed audio recorder
     if proc_rec_q is not None:
         proc_rec_q.put(None)
     if proc_rec_writer is not None:

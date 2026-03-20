@@ -143,11 +143,11 @@ def record(ctx, label):
     config, infra, template_loader = _load_config(config_path, output_dir)
 
     while True:
-        picker = TemplatePicker(show_audio_mode=True)
+        picker = TemplatePicker()
         picker_result = picker.run()
         if picker_result is None:
             return
-        tmpl_ref, audio_mode = picker_result
+        tmpl_ref = picker_result
         if tmpl_ref == '__create_template__':
             _launch_template_builder()
             continue  # loop back so user can select their new template
@@ -172,7 +172,7 @@ def record(ctx, label):
         DependencyContainer,
     )
 
-    container = DependencyContainer(config, template, out_dir, infra=infra, audio_mode=audio_mode)
+    container = DependencyContainer(config, template, out_dir, infra=infra)
     app = RecordApp(
         config=config,
         template=template,
@@ -220,11 +220,11 @@ def transcribe(ctx, audio_file, label):
     config, infra, template_loader = _load_config(config_path, output_dir)
 
     while True:
-        picker = TemplatePicker(show_audio_mode=False)
+        picker = TemplatePicker()
         picker_result = picker.run()
         if picker_result is None:
             return
-        tmpl_ref, _audio_mode = picker_result
+        tmpl_ref = picker_result
         if tmpl_ref == '__create_template__':
             _launch_template_builder()
             continue  # loop back so user can select their new template
@@ -248,7 +248,7 @@ def transcribe(ctx, audio_file, label):
         DependencyContainer,
     )
 
-    container = DependencyContainer(config, template, out_dir, infra=infra, audio_mode=None)
+    container = DependencyContainer(config, template, out_dir, infra=infra, build_audio=False)
     app = TranscribeApp(
         config=config,
         template=template,
