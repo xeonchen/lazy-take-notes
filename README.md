@@ -115,6 +115,9 @@ interactive:
 output:
   directory: "./output"
   save_audio: true                # save recording.wav alongside transcript
+  save_notes_history: true        # keep numbered snapshots in history/
+  save_context: true              # save session context text
+  save_debug_log: false           # write debug.log (off by default)
 ```
 
 ## Templates
@@ -129,14 +132,15 @@ After a session:
 
 ```
 output/
-├── transcript_raw.txt        # timestamped transcript
-├── digest.md                 # latest digest (markdown)
-├── session_context.txt       # user-provided context (if any)
+├── transcript.txt            # timestamped transcript
+├── notes.md                  # latest notes/digest (markdown)
+├── context.txt               # user-provided context (when save_context: true)
 ├── recording.wav             # audio recording (when save_audio: true)
-└── history/
-    ├── digest_001.md
-    ├── digest_002.md
-    └── digest_003_final.md   # final digest on quit/stop
+├── debug.log                 # debug log (when save_debug_log: true)
+└── history/                  # numbered snapshots (when save_notes_history: true)
+    ├── notes_001.md
+    ├── notes_002.md
+    └── notes_003_final.md    # final digest on quit/stop
 ```
 
 ## Development
