@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppConfig } from '../../entities/config';
 import type { SessionTemplate } from '../../entities/template';
 import type { DigestResult, TranscriptSegment } from '../../entities/types';
@@ -32,6 +32,20 @@ export function useSession(
   });
 
   const controllerRef = useRef<SessionController | null>(null);
+
+  // Hot-swap LLM client when infraConfig changes mid-session
+  useEffect(() => {
+    if (controllerRef.current && llmClient) {
+      controllerRef.current.updateLLMClient(llmClient);
+    }
+  }, [llmClient]);
+
+  // Hot-swap app config when it changes mid-session
+  useEffect(() => {
+    if (controllerRef.current) {
+      controllerRef.current.updateConfig(config);
+    }
+  }, [config]);
 
   /** Initialize or reset the session. */
   const initSession = useCallback(() => {
@@ -146,9 +160,24 @@ export function useSession(
     setState((s) => ({ ...s, queryResult: null }));
   }, []);
 
+  /** Reset all session state (for starting fresh). */
+  const resetSession = useCallback(() => {
+    controllerRef.current = null;
+    setState({
+      segments: [],
+      digestMarkdown: '',
+      isDigesting: false,
+      isQuerying: false,
+      digestError: null,
+      queryResult: null,
+      bufferCount: 0,
+    });
+  }, []);
+
   return {
     ...state,
     initSession,
+    resetSession,
     onSegments,
     runDigest,
     runQuickAction,

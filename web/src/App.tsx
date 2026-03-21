@@ -242,6 +242,17 @@ export default function App() {
   };
   handleStopRef.current = handleStop;
 
+  // New session — go back to template selection
+  const handleNewSession = () => {
+    session.resetSession();
+    setScreen('template-select');
+    setTemplate(null);
+    setElapsedSeconds(0);
+    setLastDigestAgo(null);
+    setLevelHistory([0, 0, 0, 0, 0, 0]);
+    setUserContext('');
+  };
+
   // Settings
   const handleSaveSettings = async (app: AppConfig, infra: InfraConfig) => {
     setAppConfig(app);
@@ -343,6 +354,9 @@ export default function App() {
           )}
           {screen === 'recording' && audioState.isCapturing && (
             <button className="btn btn-danger" onClick={handleStop}>Stop</button>
+          )}
+          {screen === 'stopped' && (
+            <button className="btn btn-primary" onClick={handleNewSession}>New Session</button>
           )}
           {!session.isDigesting && session.bufferCount > 0 && (
             <button className="btn" onClick={() => session.runDigest(false)}>Digest</button>

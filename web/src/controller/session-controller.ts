@@ -37,6 +37,17 @@ export class SessionController {
     this.quickActionUc = new RunQuickActionUseCase(llmClient);
   }
 
+  /** Hot-swap the LLM client (e.g. after settings change). */
+  updateLLMClient(llmClient: LLMClient): void {
+    this.digestUc = new RunDigestUseCase(llmClient);
+    this.quickActionUc = new RunQuickActionUseCase(llmClient);
+  }
+
+  /** Hot-swap the app config (e.g. after settings change). */
+  updateConfig(config: AppConfig): void {
+    this.config = config;
+  }
+
   /** Process new transcript segments. Returns true if digest should trigger. */
   onTranscriptSegments(segments: TranscriptSegment[]): boolean {
     this.allSegments.push(...segments);

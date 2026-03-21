@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { formatElapsed, formatWallTime, digestOk } from '../../src/entities/types';
+import { SUGGESTED_MODELS, type LLMProvider } from '../../src/entities/config';
 
 describe('formatElapsed', () => {
   it('formats zero seconds', () => {
@@ -31,5 +32,16 @@ describe('digestOk', () => {
 
   it('returns false when data is null', () => {
     expect(digestOk({ data: null, error: 'some error' })).toBe(false);
+  });
+});
+
+describe('SUGGESTED_MODELS', () => {
+  it('covers all LLM providers', () => {
+    const providers: LLMProvider[] = ['openai', 'ollama'];
+    for (const provider of providers) {
+      expect(SUGGESTED_MODELS[provider]).toBeDefined();
+      expect(SUGGESTED_MODELS[provider].digest).toBeTruthy();
+      expect(SUGGESTED_MODELS[provider].interactive).toBeTruthy();
+    }
   });
 });

@@ -159,4 +159,37 @@ describe('SessionController', () => {
     const result = await ctrl.runQuickAction('99');
     expect(result).toBeNull();
   });
+
+  it('updateLLMClient swaps the LLM client for subsequent operations', async () => {
+    const oldLLM = createFakeLLM('old response');
+    const ctrl = new SessionController(
+      config, template, oldLLM, createFakePersistence(), 'sess-1',
+    );
+
+    const newLLM = createFakeLLM('new response');
+    ctrl.updateLLMClient(newLLM);
+
+    ctrl.digestState.buffer = ['line1'];
+    const result = await ctrl.runDigest();
+    expect(result.data).toBe('new response');
+    expect(newLLM.chat).toHaveBeenCalled();
+    expect(oldLLM.chat).not.toHaveBeenCalled();
+  });
+
+  it('updateConfig swaps the config for subsequent operations', () => {
+    const ctrl = new SessionController(
+      config, template, createFakeLLM(), createFakePersistence(), 'sess-1',
+    );
+
+    // With old config: minLines=5, maxLines=20 → 21 lines would trigger
+    // After update: minLines=99 → 21 lines should NOT trigger
+    const newConfig = { ...config, digest: { ...config.digest, minLines: 99, maxLines: 200 } };
+    ctrl.updateConfig(newConfig);
+
+    const segments = Array.from({ length: 21 }, (_, i) => ({
+      text: `line ${i}`, wallStart: i, wallEnd: i + 1,
+    }));
+    const shouldTrigger = ctrl.onTranscriptSegments(segments);
+    expect(shouldTrigger).toBe(false); // minLines raised to 99
+  });
 });

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DEFAULT_APP_CONFIG, DEFAULT_INFRA_CONFIG, AVAILABLE_WHISPER_MODELS, type AppConfig, type InfraConfig } from '../../entities/config';
+import { DEFAULT_APP_CONFIG, DEFAULT_INFRA_CONFIG, AVAILABLE_WHISPER_MODELS, SUGGESTED_MODELS, type AppConfig, type InfraConfig, type LLMProvider } from '../../entities/config';
 
 interface Props {
   appConfig: AppConfig;
@@ -53,7 +53,17 @@ export function SettingsModal({ appConfig, infraConfig, onSave, onTestConnection
               <label>Provider</label>
               <select
                 value={infra.llmProvider}
-                onChange={(e) => setInfra({ ...infra, llmProvider: e.target.value as 'ollama' | 'openai' })}
+                onChange={(e) => {
+                  const provider = e.target.value as LLMProvider;
+                  setInfra({ ...infra, llmProvider: provider });
+                  // Auto-suggest models for the new provider
+                  const suggested = SUGGESTED_MODELS[provider];
+                  setApp((prev) => ({
+                    ...prev,
+                    digest: { ...prev.digest, model: suggested.digest },
+                    interactive: { ...prev.interactive, model: suggested.interactive },
+                  }));
+                }}
               >
                 <option value="openai">OpenAI / Compatible API</option>
                 <option value="ollama">Ollama (local)</option>

@@ -21,6 +21,8 @@ import { StatusBar, type RecordingState } from '../../src/ui/components/StatusBa
 import { ConsentNotice } from '../../src/ui/components/ConsentNotice';
 import { TemplateSelector } from '../../src/ui/components/TemplateSelector';
 import { QueryModal } from '../../src/ui/components/QueryModal';
+import { SettingsModal } from '../../src/ui/components/SettingsModal';
+import { DEFAULT_APP_CONFIG, DEFAULT_INFRA_CONFIG, SUGGESTED_MODELS } from '../../src/entities/config';
 import type { SessionTemplate } from '../../src/entities/template';
 
 const mockTemplates: SessionTemplate[] = [
@@ -285,5 +287,57 @@ describe('QueryModal', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe('SettingsModal', () => {
+  it('updates model names when switching provider to Ollama', () => {
+    const onSave = vi.fn();
+    render(
+      <SettingsModal
+        appConfig={DEFAULT_APP_CONFIG}
+        infraConfig={DEFAULT_INFRA_CONFIG}
+        onSave={onSave}
+        onTestConnection={vi.fn().mockResolvedValue({ ok: true, error: '' })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    // Default provider is openai with gpt-4o-mini models
+    const providerSelect = screen.getByDisplayValue('OpenAI / Compatible API');
+    fireEvent.change(providerSelect, { target: { value: 'ollama' } });
+
+    // Click Save and verify model names were updated
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    const [savedApp] = onSave.mock.calls[0]!;
+    expect(savedApp.digest.model).toBe(SUGGESTED_MODELS.ollama.digest);
+    expect(savedApp.interactive.model).toBe(SUGGESTED_MODELS.ollama.interactive);
+  });
+
+  it('updates model names when switching provider to OpenAI', () => {
+    const onSave = vi.fn();
+    const ollamaInfra = { ...DEFAULT_INFRA_CONFIG, llmProvider: 'ollama' as const };
+    const ollamaApp = {
+      ...DEFAULT_APP_CONFIG,
+      digest: { ...DEFAULT_APP_CONFIG.digest, model: 'llama3.2' },
+      interactive: { ...DEFAULT_APP_CONFIG.interactive, model: 'llama3.2' },
+    };
+    render(
+      <SettingsModal
+        appConfig={ollamaApp}
+        infraConfig={ollamaInfra}
+        onSave={onSave}
+        onTestConnection={vi.fn().mockResolvedValue({ ok: true, error: '' })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const providerSelect = screen.getByDisplayValue('Ollama (local)');
+    fireEvent.change(providerSelect, { target: { value: 'openai' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    const [savedApp] = onSave.mock.calls[0]!;
+    expect(savedApp.digest.model).toBe(SUGGESTED_MODELS.openai.digest);
+    expect(savedApp.interactive.model).toBe(SUGGESTED_MODELS.openai.interactive);
   });
 });

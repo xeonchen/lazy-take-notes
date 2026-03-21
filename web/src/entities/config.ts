@@ -48,7 +48,7 @@ export interface InfraConfig {
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
   transcription: {
-    model: 'whisper-base',
+    model: 'whisper-tiny',
     models: {},
     chunkDuration: 25.0,
     overlap: 1.0,
@@ -87,6 +87,12 @@ export const AVAILABLE_WHISPER_MODELS = [
   'whisper-medium',
   'whisper-large-v3-turbo',
 ] as const;
+
+/** Default model suggestions per LLM provider. */
+export const SUGGESTED_MODELS: Record<LLMProvider, { digest: string; interactive: string }> = {
+  openai: { digest: 'gpt-4o-mini', interactive: 'gpt-4o-mini' },
+  ollama: { digest: 'llama3.2', interactive: 'llama3.2' },
+};
 
 /** Resolve whisper model name for a locale. */
 export function modelForLocale(config: TranscriptionConfig, locale: string): string {
