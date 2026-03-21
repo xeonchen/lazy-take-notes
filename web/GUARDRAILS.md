@@ -52,6 +52,13 @@ Unified checklist for development and review. Every item here was learned from a
 - [ ] New components must have corresponding integration tests
 - [ ] Adapter tests should mock at the boundary (e.g., `msw` for HTTP, `fake-indexeddb` for storage)
 
+## E2E (Playwright)
+
+- [ ] `getByText()` locators MUST be unique — adding help text or tooltips can cause existing `getByText('X')` to match multiple elements (Playwright strict mode rejects ambiguous locators). Use `locator('tag', { hasText })` or `getByRole()` instead. (`OLLAMA_ORIGINS` matched 3 elements after adding setup instructions)
+- [ ] Modal overlays block pointer events — any `position: fixed; inset: 0` overlay (consent notice, onboarding modal) intercepts all clicks. E2E tests for non-overlay features must seed localStorage flags via `addInitScript` to dismiss overlays before testing. (ConsentNotice blocked 4 E2E tests in CI)
+- [ ] z-index stacking: when adding new overlays, verify they don't stack above elements that need to remain clickable (e.g., header buttons). Test manually and in E2E. (`app-header` needed higher z-index than `modal-overlay`)
+- [ ] CI browsers start with empty state — never assume localStorage, IndexedDB, or cookies are pre-populated. First-run flows (onboarding, consent) will trigger unless explicitly suppressed in test setup.
+
 ---
 
 ## Meta

@@ -6,6 +6,13 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('App startup', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('ltn-consent-dismissed', '1');
+      localStorage.setItem('ltn-setup-completed', '1');
+    });
+  });
+
   test('shows template selector on load', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.logo')).toContainText('lazy-take-notes');
@@ -22,6 +29,13 @@ test.describe('App startup', () => {
 });
 
 test.describe('Template selection', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('ltn-consent-dismissed', '1');
+      localStorage.setItem('ltn-setup-completed', '1');
+    });
+  });
+
   test('clicking a template transitions to recording screen', async ({ page }) => {
     await page.goto('/');
     // Click the first template card
@@ -51,6 +65,13 @@ test.describe('Template selection', () => {
 });
 
 test.describe('Settings modal', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('ltn-consent-dismissed', '1');
+      localStorage.setItem('ltn-setup-completed', '1');
+    });
+  });
+
   test('opens and closes settings', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Settings' }).click();
@@ -74,7 +95,7 @@ test.describe('Settings modal', () => {
 
     // Should show Ollama-specific fields
     await expect(page.getByText('Ollama Server Address')).toBeVisible();
-    await expect(page.getByText('OLLAMA_ORIGINS')).toBeVisible();
+    await expect(page.locator('code', { hasText: 'OLLAMA_ORIGINS' }).first()).toBeVisible();
   });
 
   test('test connection button exists', async ({ page }) => {
@@ -99,6 +120,13 @@ test.describe('Settings modal', () => {
 });
 
 test.describe('Help modal', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('ltn-consent-dismissed', '1');
+      localStorage.setItem('ltn-setup-completed', '1');
+    });
+  });
+
   test('opens help with H key after template selection', async ({ page }) => {
     await page.goto('/');
     await page.locator('.template-card').first().click();
@@ -114,6 +142,13 @@ test.describe('Help modal', () => {
 });
 
 test.describe('Status bar', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('ltn-consent-dismissed', '1');
+      localStorage.setItem('ltn-setup-completed', '1');
+    });
+  });
+
   test('shows idle state and buffer count', async ({ page }) => {
     await page.goto('/');
     await page.locator('.template-card').first().click();
@@ -126,6 +161,12 @@ test.describe('Status bar', () => {
 });
 
 test.describe('Consent notice', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('ltn-setup-completed', '1');
+    });
+  });
+
   test('shows consent notice on first visit', async ({ page, context }) => {
     // Clear localStorage to simulate first visit
     await context.clearCookies();
@@ -152,5 +193,22 @@ test.describe('Consent notice', () => {
     await page.reload();
     await page.waitForTimeout(500);
     await expect(page.locator('.consent-notice')).not.toBeVisible();
+  });
+});
+
+test.describe('First-run setup', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('ltn-consent-dismissed', '1');
+      // Deliberately NOT setting ltn-setup-completed to trigger first-run flow
+    });
+  });
+
+  test('shows getting started modal on first run', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('.modal-header').filter({ hasText: 'Getting Started' })).toBeVisible();
+    await expect(page.locator('.setup-banner')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save & Start' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Skip' })).toBeVisible();
   });
 });

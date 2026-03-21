@@ -340,4 +340,42 @@ describe('SettingsModal', () => {
     expect(savedApp.digest.model).toBe(SUGGESTED_MODELS.openai.digest);
     expect(savedApp.interactive.model).toBe(SUGGESTED_MODELS.openai.interactive);
   });
+
+  it('shows Getting Started header and banner when isFirstRun is true', () => {
+    render(
+      <SettingsModal
+        appConfig={DEFAULT_APP_CONFIG}
+        infraConfig={DEFAULT_INFRA_CONFIG}
+        isFirstRun={true}
+        onSave={vi.fn()}
+        onTestConnection={vi.fn().mockResolvedValue({ ok: true, error: '' })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Getting Started')).toBeInTheDocument();
+    expect(screen.getByText('Welcome to lazy-take-notes')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save & Start' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument();
+    // No close (✕) button in first-run mode
+    expect(screen.queryByText('✕')).not.toBeInTheDocument();
+  });
+
+  it('shows normal Settings header when isFirstRun is false', () => {
+    render(
+      <SettingsModal
+        appConfig={DEFAULT_APP_CONFIG}
+        infraConfig={DEFAULT_INFRA_CONFIG}
+        onSave={vi.fn()}
+        onTestConnection={vi.fn().mockResolvedValue({ ok: true, error: '' })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.queryByText('Getting Started')).not.toBeInTheDocument();
+    expect(screen.queryByText('Welcome to lazy-take-notes')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+  });
 });

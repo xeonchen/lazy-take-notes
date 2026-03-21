@@ -123,6 +123,9 @@ Tracking document for feature parity between the Python/Textual desktop app and 
 | 80 | Digesting indicator | ✅ | StatusBar spinning indicator |
 | 81 | Settings modal | ✅ | Full config editing |
 | 82 | Reset settings to defaults | ✅ | Button in SettingsModal |
+| 83a | First-run setup wizard | ✅ | Auto-opens SettingsModal with "Getting Started" banner |
+| 83b | Ollama auto-detection | ✅ | Probes localhost on settings open, suggests switch |
+| 83c | Enhanced provider help tips | ✅ | Step-by-step Ollama setup, OpenAI API key link |
 
 ## Infrastructure / Deployment
 

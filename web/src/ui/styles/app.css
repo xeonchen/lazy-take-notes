@@ -45,6 +45,8 @@ html, body, #root {
   border-bottom: 1px solid var(--border);
   gap: 0.75rem;
   flex-shrink: 0;
+  position: relative;
+  z-index: 101;
 }
 
 .app-header .logo {
@@ -544,4 +546,39 @@ html, body, #root {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+
+/* Setup / First-run */
+.setup-banner {
+  background: var(--surface-alt, #1a2332);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.setup-banner strong { display: block; margin-bottom: 0.25rem; }
+.setup-banner p { margin: 0; color: var(--text-muted); font-size: 0.85rem; }
+
+.setup-steps {
+  margin: 0.5rem 0 0.25rem;
+  padding-left: 1.25rem;
+  font-size: 0.8rem;
+}
+.setup-steps li { margin-bottom: 0.2rem; }
+
+.help-detail {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--link, #58a6ff);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  font-size: inherit;
 }

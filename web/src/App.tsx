@@ -50,6 +50,7 @@ export default function App() {
   const [screen, setScreen] = useState<AppScreen>('template-select');
   const [template, setTemplate] = useState<SessionTemplate | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [isFirstRun, setIsFirstRun] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showConsent, setShowConsent] = useState(false);
   const [userContext, setUserContext] = useState('');
@@ -113,6 +114,10 @@ export default function App() {
       if (saved) {
         setAppConfig(saved.app);
         setInfraConfig(saved.infra);
+      } else if (!localStorage.getItem('ltn-setup-completed')) {
+        // First run — auto-open settings to guide user
+        setIsFirstRun(true);
+        setShowSettings(true);
       }
       setConfigLoaded(true);
 
@@ -258,6 +263,8 @@ export default function App() {
     setAppConfig(app);
     setInfraConfig(infra);
     await persistence.saveConfig({ app, infra });
+    localStorage.setItem('ltn-setup-completed', '1');
+    setIsFirstRun(false);
     notify('Settings saved', 'success');
   };
 
@@ -310,12 +317,13 @@ export default function App() {
           <SettingsModal
             appConfig={appConfig}
             infraConfig={infraConfig}
+            isFirstRun={isFirstRun}
             onSave={handleSaveSettings}
             onTestConnection={handleTestConnection}
-            onClose={() => setShowSettings(false)}
+            onClose={() => { setShowSettings(false); setIsFirstRun(false); }}
           />
         )}
-        {showConsent && (
+        {showConsent && !showSettings && (
           <ConsentNotice
             onDismiss={() => setShowConsent(false)}
             onNeverShow={() => {
@@ -411,9 +419,10 @@ export default function App() {
         <SettingsModal
           appConfig={appConfig}
           infraConfig={infraConfig}
+          isFirstRun={isFirstRun}
           onSave={handleSaveSettings}
           onTestConnection={handleTestConnection}
-          onClose={() => setShowSettings(false)}
+          onClose={() => { setShowSettings(false); setIsFirstRun(false); }}
         />
       )}
 
@@ -437,7 +446,7 @@ export default function App() {
         />
       )}
 
-      {showConsent && (
+      {showConsent && !showSettings && (
         <ConsentNotice
           onDismiss={() => setShowConsent(false)}
           onNeverShow={() => {
