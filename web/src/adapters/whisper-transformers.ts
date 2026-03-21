@@ -5,18 +5,17 @@
 
 import type { TranscriptSegment } from '../entities/types';
 import type { Transcriber } from '../use-cases/ports';
+import { type WhisperModelName } from '../entities/config';
 
 // Model ID mapping: short name → HuggingFace model ID
-const MODEL_MAP: Record<string, string> = {
+// Typed against WhisperModelName so TS errors if AVAILABLE_WHISPER_MODELS changes.
+const MODEL_MAP: Record<WhisperModelName, string> = {
   'whisper-tiny': 'onnx-community/whisper-tiny',
   'whisper-base': 'onnx-community/whisper-base',
   'whisper-small': 'onnx-community/whisper-small',
   'whisper-medium': 'onnx-community/whisper-medium',
   'whisper-large-v3-turbo': 'onnx-community/whisper-large-v3-turbo',
 };
-
-// AVAILABLE_WHISPER_MODELS is defined in entities/config.ts (L1)
-// MODEL_MAP keys must stay in sync with it.
 
 type Pipeline = {
   (audio: Float32Array, options: {
@@ -57,7 +56,7 @@ export class WhisperTransformersTranscriber implements Transcriber {
     }
 
     // Resolve model ID
-    this.modelId = MODEL_MAP[modelName] ?? modelName;
+    this.modelId = (modelName in MODEL_MAP ? MODEL_MAP[modelName as WhisperModelName] : modelName);
 
     // Allow remote models and disable local model check
     env.allowRemoteModels = true;

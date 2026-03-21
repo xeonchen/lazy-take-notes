@@ -22,7 +22,7 @@ import { ConsentNotice } from '../../src/ui/components/ConsentNotice';
 import { TemplateSelector } from '../../src/ui/components/TemplateSelector';
 import { QueryModal } from '../../src/ui/components/QueryModal';
 import { SettingsModal } from '../../src/ui/components/SettingsModal';
-import { DEFAULT_APP_CONFIG, DEFAULT_INFRA_CONFIG, SUGGESTED_MODELS } from '../../src/entities/config';
+import { DEFAULT_APP_CONFIG, DEFAULT_INFRA_CONFIG, SUGGESTED_MODELS, MODEL_NAMES } from '../../src/entities/config';
 import type { SessionTemplate } from '../../src/entities/template';
 
 const mockTemplates: SessionTemplate[] = [
@@ -291,7 +291,7 @@ describe('QueryModal', () => {
 });
 
 describe('SettingsModal', () => {
-  it('updates model names when switching provider to Ollama', () => {
+  it('updates model names when switching provider to OpenAI', () => {
     const onSave = vi.fn();
     render(
       <SettingsModal
@@ -303,42 +303,42 @@ describe('SettingsModal', () => {
       />,
     );
 
-    // Default provider is openai with gpt-4o-mini models
-    const providerSelect = screen.getByDisplayValue('OpenAI / Compatible API');
-    fireEvent.change(providerSelect, { target: { value: 'ollama' } });
+    // Default provider is ollama
+    const providerSelect = screen.getByDisplayValue('Ollama (local)');
+    fireEvent.change(providerSelect, { target: { value: 'openai' } });
 
     // Click Save and verify model names were updated
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     const [savedApp] = onSave.mock.calls[0]!;
-    expect(savedApp.digest.model).toBe(SUGGESTED_MODELS.ollama.digest);
-    expect(savedApp.interactive.model).toBe(SUGGESTED_MODELS.ollama.interactive);
+    expect(savedApp.digest.model).toBe(SUGGESTED_MODELS.openai.digest);
+    expect(savedApp.interactive.model).toBe(SUGGESTED_MODELS.openai.interactive);
   });
 
-  it('updates model names when switching provider to OpenAI', () => {
+  it('updates model names when switching provider to Ollama', () => {
     const onSave = vi.fn();
-    const ollamaInfra = { ...DEFAULT_INFRA_CONFIG, llmProvider: 'ollama' as const };
-    const ollamaApp = {
+    const openaiInfra = { ...DEFAULT_INFRA_CONFIG, llmProvider: 'openai' as const };
+    const openaiApp = {
       ...DEFAULT_APP_CONFIG,
-      digest: { ...DEFAULT_APP_CONFIG.digest, model: 'llama3.2' },
-      interactive: { ...DEFAULT_APP_CONFIG.interactive, model: 'llama3.2' },
+      digest: { ...DEFAULT_APP_CONFIG.digest, model: MODEL_NAMES.OPENAI_DEFAULT },
+      interactive: { ...DEFAULT_APP_CONFIG.interactive, model: MODEL_NAMES.OPENAI_DEFAULT },
     };
     render(
       <SettingsModal
-        appConfig={ollamaApp}
-        infraConfig={ollamaInfra}
+        appConfig={openaiApp}
+        infraConfig={openaiInfra}
         onSave={onSave}
         onTestConnection={vi.fn().mockResolvedValue({ ok: true, error: '' })}
         onClose={vi.fn()}
       />,
     );
 
-    const providerSelect = screen.getByDisplayValue('Ollama (local)');
-    fireEvent.change(providerSelect, { target: { value: 'openai' } });
+    const providerSelect = screen.getByDisplayValue('OpenAI / Compatible API');
+    fireEvent.change(providerSelect, { target: { value: 'ollama' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     const [savedApp] = onSave.mock.calls[0]!;
-    expect(savedApp.digest.model).toBe(SUGGESTED_MODELS.openai.digest);
-    expect(savedApp.interactive.model).toBe(SUGGESTED_MODELS.openai.interactive);
+    expect(savedApp.digest.model).toBe(SUGGESTED_MODELS.ollama.digest);
+    expect(savedApp.interactive.model).toBe(SUGGESTED_MODELS.ollama.interactive);
   });
 
   it('shows Getting Started header and banner when isFirstRun is true', () => {
