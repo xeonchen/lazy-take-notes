@@ -2,20 +2,22 @@
   <img src="logo-banner.png" alt="lazy-take-notes" width="360">
 </p>
 
-Terminal app for live transcription and note-taking. Records your mic, transcribes speech to text, and periodically generates structured digests of what's happening.
+Live transcription and note-taking with AI-powered digests. Records audio, transcribes speech to text, and periodically generates structured summaries. Available as a **desktop terminal app** (Python TUI) and a **web app** (React, runs in any modern browser).
 
 ![screenshot](screenshot.png)
 
-## Requirements
+## Desktop App (Python TUI)
+
+### Requirements
 
 - Python 3.11+
 - A microphone
 - A transcription engine ([whisper.cpp](https://github.com/ggerganov/whisper.cpp) by default)
 - An LLM backend ([Ollama](https://ollama.com) by default, or any [OpenAI-compatible API](https://platform.openai.com/))
 
-## Install
+### Install
 
-### Quick setup (macOS)
+#### Quick setup (macOS)
 
 Run this in Terminal — it installs everything and sets up a `take-note` shortcut:
 
@@ -25,7 +27,7 @@ curl -fsSL https://raw.githubusercontent.com/CJHwong/lazy-take-notes/main/setup.
 
 Then run `take-note record`.
 
-### Manual install
+#### Manual install
 
 ```bash
 # try without installing (uv required)
@@ -40,7 +42,7 @@ pip install -e .
 
 **New to this?** See the [Getting Started guide](GETTING_STARTED.md) for step-by-step setup instructions.
 
-## Run
+### Run
 
 ```bash
 take-note                                     # interactive mode selector
@@ -56,7 +58,7 @@ take-note --output-dir ./my_session           # custom output dir
 
 > `lazy-take-notes` works as an alias for `take-note`.
 
-## Keys
+### Keys
 
 | Key     | Action                          |
 | ------- | ------------------------------- |
@@ -69,7 +71,7 @@ take-note --output-dir ./my_session           # custom output dir
 
 Templates can add more keys for quick actions (catch up, action items, etc). Press `h` in the app to see all available bindings.
 
-## Config
+### Config
 
 Config lives in your OS config directory:
 
@@ -120,13 +122,13 @@ output:
   save_debug_log: false           # write debug.log (off by default)
 ```
 
-## Templates
+### Templates
 
 Templates control the LLM prompts, labels, and quick-action keys for a session. The template picker launches at startup — built-ins are listed there.
 
 To add your own or override a built-in, drop a `.yaml` file in the `templates/` subdirectory of your config path (see table above). See [TEMPLATES.md](TEMPLATES.md) for the full schema and variable reference.
 
-## Output
+### Output
 
 After a session:
 
@@ -143,12 +145,67 @@ output/
     └── notes_003_final.md    # final digest on quit/stop
 ```
 
+## Web App
+
+A browser-based version with the same core features: real-time transcription, LLM digests, quick actions, and template support. Runs entirely in the browser — local Whisper inference via WebGPU/WASM, no server required (aside from the LLM backend).
+
+### Requirements
+
+- [Node.js](https://nodejs.org/) 18+ and [pnpm](https://pnpm.io/)
+- A modern browser (Chrome or Edge recommended for WebGPU; Firefox and Safari fall back to WASM)
+- An LLM backend (Ollama or any OpenAI-compatible API)
+
+### Quick start
+
+```bash
+cd web
+pnpm install
+pnpm run dev             # opens http://localhost:5173
+```
+
+On first run, the settings modal opens automatically — configure your LLM provider, pick a template, and start recording.
+
+### Features
+
+- **Mic capture** via Web Audio API (system audio not yet supported in browsers)
+- **Local transcription** using Whisper models from Hugging Face (WebGPU acceleration with WASM fallback), or **cloud transcription** via the OpenAI Whisper API
+- **LLM providers**: Ollama (local), OpenAI, or any OpenAI-compatible API (Groq, Together, etc.)
+- **Auto-digest** with the same trigger logic as the desktop app
+- **Quick actions** (keys 1–5), keyboard shortcuts, dark theme
+- **Session auto-save** to IndexedDB
+- **10 bundled templates** (English & Traditional Chinese)
+
+### Deployment
+
+The web app can be deployed to [Vercel](https://vercel.com) (configured in `web/vercel.json`). COOP/COEP headers are required for SharedArrayBuffer support (used by local Whisper).
+
+### Feature parity
+
+See [web/FEATURES.md](web/FEATURES.md) for a detailed checklist of what's implemented vs. the desktop app.
+
+**New to the web version?** See the [Getting Started guide](GETTING_STARTED.md#web-app) for step-by-step instructions.
+
 ## Development
+
+### Desktop
 
 ```bash
 uv sync                  # install deps
 uv run pytest tests/ -v  # run tests
 uv run lint-imports      # check layer contracts
+```
+
+Architecture details are in [AGENTS.md](AGENTS.md).
+
+### Web
+
+```bash
+cd web
+pnpm install             # install deps
+pnpm run typecheck       # TypeScript type checking
+pnpm run lint            # ESLint (Clean Architecture boundaries enforced)
+pnpm run test            # Vitest unit + integration tests
+pnpm run build           # production build
 ```
 
 Architecture details are in [AGENTS.md](AGENTS.md).

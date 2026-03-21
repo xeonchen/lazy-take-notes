@@ -1,6 +1,8 @@
 # Templates
 
-Templates are YAML files that control the LLM prompts, display labels, and quick actions for a session. Built-in templates ship with the app; you can add your own or override built-ins.
+Templates are YAML files that control the LLM prompts, display labels, and quick actions for a session. Built-in templates ship with both the desktop and web versions; you can add your own or override built-ins.
+
+> **Web app note:** The web version bundles the same set of templates. They are loaded at build time via Vite's `import.meta.glob()`. Custom user templates via the web UI are not yet supported (see [web/FEATURES.md](web/FEATURES.md) for status).
 
 ## User templates
 
