@@ -33,6 +33,37 @@ type Pipeline = {
   }>;
 };
 
+/** HF progress event shape (subset we use). */
+export type HFProgressEvent = {
+  status: string;
+  file?: string;
+  loaded?: number;
+  total?: number;
+};
+
+/**
+ * Aggregate per-file HF progress events into a single overall percentage.
+ * HF transformers reports progress per file (tokenizer, config, weights…),
+ * each going 0→100 independently — without aggregation the bar jumps back.
+ */
+export function createAggregatedProgressCallback(
+  onProgress: (percent: number) => void,
+): (data: HFProgressEvent) => void {
+  const fileProgress = new Map<string, { loaded: number; total: number }>();
+  return (data: HFProgressEvent) => {
+    if (data.status === 'progress' && data.file && data.loaded !== undefined && data.total) {
+      fileProgress.set(data.file, { loaded: data.loaded, total: data.total });
+      let totalBytes = 0;
+      let loadedBytes = 0;
+      for (const f of fileProgress.values()) {
+        totalBytes += f.total;
+        loadedBytes += f.loaded;
+      }
+      onProgress(totalBytes > 0 ? Math.round((loadedBytes / totalBytes) * 100) : 0);
+    }
+  };
+}
+
 export class WhisperTransformersTranscriber implements Transcriber {
   private pipeline: Pipeline | null = null;
   private ready = false;
@@ -64,11 +95,7 @@ export class WhisperTransformersTranscriber implements Transcriber {
     env.allowLocalModels = false;
 
     const progressCallback = onProgress
-      ? (data: { status: string; progress?: number }) => {
-          if (data.status === 'progress' && data.progress !== undefined) {
-            onProgress(Math.round(data.progress));
-          }
-        }
+      ? createAggregatedProgressCallback(onProgress)
       : undefined;
 
     this.pipeline = (await pipeline(
