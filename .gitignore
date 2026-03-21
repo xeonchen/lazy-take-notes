@@ -61,5 +61,8 @@ Thumbs.db
 *.bin
 *.onnx
 
+# Node / web app
+node_modules/
+
 # Procject-specific
 output/
