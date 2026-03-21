@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { formatElapsed, formatWallTime, digestOk } from '../../src/entities/types';
-import { SUGGESTED_MODELS, type LLMProvider } from '../../src/entities/config';
+import { SUGGESTED_MODELS, DEFAULT_APP_CONFIG, DEFAULT_INFRA_CONFIG, MODEL_NAMES, type LLMProvider } from '../../src/entities/config';
 
 describe('formatElapsed', () => {
   it('formats zero seconds', () => {
@@ -43,5 +43,16 @@ describe('SUGGESTED_MODELS', () => {
       expect(SUGGESTED_MODELS[provider].digest).toBeTruthy();
       expect(SUGGESTED_MODELS[provider].interactive).toBeTruthy();
     }
+  });
+});
+
+describe('DEFAULT_APP_CONFIG uses MODEL_NAMES', () => {
+  it('digest and interactive models reference MODEL_NAMES.OLLAMA_DEFAULT', () => {
+    expect(DEFAULT_APP_CONFIG.digest.model).toBe(MODEL_NAMES.OLLAMA_DEFAULT);
+    expect(DEFAULT_APP_CONFIG.interactive.model).toBe(MODEL_NAMES.OLLAMA_DEFAULT);
+  });
+
+  it('default infra provider is ollama', () => {
+    expect(DEFAULT_INFRA_CONFIG.llmProvider).toBe('ollama');
   });
 });

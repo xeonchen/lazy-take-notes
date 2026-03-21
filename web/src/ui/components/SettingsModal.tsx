@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { DEFAULT_APP_CONFIG, DEFAULT_INFRA_CONFIG, AVAILABLE_WHISPER_MODELS, SUGGESTED_MODELS, type AppConfig, type InfraConfig, type LLMProvider } from '../../entities/config';
+import { DEFAULT_APP_CONFIG, DEFAULT_INFRA_CONFIG, AVAILABLE_WHISPER_MODELS, SUGGESTED_MODELS, MODEL_NAMES, type AppConfig, type InfraConfig, type LLMProvider } from '../../entities/config';
 
 interface Props {
   appConfig: AppConfig;
@@ -63,8 +63,8 @@ export function SettingsModal({ appConfig, infraConfig, isFirstRun, onSave, onTe
   };
 
   const modelPlaceholder = infra.llmProvider === 'ollama'
-    ? 'e.g. llama3.2, gpt-oss:20b-cloud'
-    : 'e.g. gpt-4o-mini, gpt-4o';
+    ? `e.g. ${MODEL_NAMES.OLLAMA_DEFAULT}, ${MODEL_NAMES.OLLAMA_CLOUD_DIGEST}`
+    : `e.g. ${MODEL_NAMES.OPENAI_DEFAULT}, ${MODEL_NAMES.OPENAI_LARGE}`;
 
   return (
     <div className="modal-overlay" onClick={isFirstRun ? undefined : onClose}>
@@ -110,7 +110,7 @@ export function SettingsModal({ appConfig, infraConfig, isFirstRun, onSave, onTe
                   <ol className="setup-steps">
                     <li>Install from <a href="https://ollama.com" target="_blank" rel="noopener noreferrer">ollama.com</a></li>
                     <li>Start with CORS: <code>OLLAMA_ORIGINS=* ollama serve</code></li>
-                    <li>Pull a model: <code>ollama pull llama3.2</code></li>
+                    <li>Pull a model: <code>ollama pull {MODEL_NAMES.OLLAMA_DEFAULT}</code></li>
                     <li>Click &quot;Test Connection&quot; below to verify</li>
                   </ol>
                   <span className="help-detail">On macOS with Ollama.app, set OLLAMA_ORIGINS=* as an environment variable and restart.</span>
