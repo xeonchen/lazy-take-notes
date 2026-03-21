@@ -38,6 +38,7 @@ Unified checklist for development and review. Every item here was learned from a
 - [ ] Deep-copy mutable config objects before editing — use `structuredClone()` to prevent mutations leaking back to the caller (`SettingsModal` finding)
 - [ ] Guard utility functions against invalid input — e.g., `formatElapsed` should handle negative values
 - [ ] `.filter(Boolean)` on string arrays removes empty strings — if blank lines are intentional, use a more specific filter
+- [ ] Locale→model mappings (`TranscriptionConfig.models`) use `Record<string, string>` — values are not type-checked against `WhisperModelName`. A typo silently falls through to a raw HF model ID lookup that 404s at runtime. Consider tightening to `Record<string, WhisperModelName>` when deserialization paths allow it. (`modelForLocale` review finding)
 
 ## Unused Code
 
