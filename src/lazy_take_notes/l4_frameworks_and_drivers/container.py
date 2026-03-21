@@ -5,10 +5,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from lazy_take_notes.l1_entities.audio_mode import AudioMode
 from lazy_take_notes.l1_entities.config import AppConfig
 from lazy_take_notes.l1_entities.template import SessionTemplate
-from lazy_take_notes.l2_use_cases.ports.audio_source import AudioSource
 from lazy_take_notes.l2_use_cases.ports.config_loader import ConfigLoader
 from lazy_take_notes.l2_use_cases.ports.llm_client import LLMClient
 from lazy_take_notes.l2_use_cases.ports.model_resolver import ModelResolver
@@ -18,7 +16,7 @@ from lazy_take_notes.l2_use_cases.ports.transcriber import Transcriber
 from lazy_take_notes.l3_interface_adapters.controllers.session_controller import SessionController
 from lazy_take_notes.l3_interface_adapters.gateways.file_persistence import FilePersistenceGateway
 from lazy_take_notes.l3_interface_adapters.gateways.hf_model_resolver import HfModelResolver
-from lazy_take_notes.l3_interface_adapters.gateways.sounddevice_audio_source import SounddeviceAudioSource
+from lazy_take_notes.l3_interface_adapters.gateways.mixed_audio_source import MixedAudioSource
 from lazy_take_notes.l3_interface_adapters.gateways.subprocess_whisper_transcriber import SubprocessWhisperTranscriber
 from lazy_take_notes.l3_interface_adapters.gateways.yaml_config_loader import YamlConfigLoader
 from lazy_take_notes.l3_interface_adapters.gateways.yaml_template_loader import YamlTemplateLoader
@@ -34,7 +32,7 @@ class DependencyContainer:
         template: SessionTemplate,
         output_dir: Path,
         infra: InfraConfig | None = None,
-        audio_mode: AudioMode | None = AudioMode.MIC_ONLY,
+        build_audio: bool = True,
     ) -> None:
         self.config = config
         self.template = template
@@ -44,7 +42,7 @@ class DependencyContainer:
         self.persistence: PersistenceGateway = FilePersistenceGateway(output_dir)
         self.llm_client: LLMClient = self._build_llm_client(_infra)
         self.transcriber: Transcriber = SubprocessWhisperTranscriber()
-        self.audio_source: AudioSource | None = self._build_audio_source(audio_mode) if audio_mode is not None else None
+        self.audio_source: MixedAudioSource | None = self._build_mixed_source() if build_audio else None
         self.model_resolver: ModelResolver = HfModelResolver()
 
         self.controller = SessionController(
@@ -55,19 +53,14 @@ class DependencyContainer:
         )
 
     @staticmethod
-    def _build_audio_source(mode: AudioMode) -> AudioSource:
-        if mode == AudioMode.MIC_ONLY:
-            return SounddeviceAudioSource()
+    def _build_mixed_source() -> MixedAudioSource:
+        from lazy_take_notes.l3_interface_adapters.gateways.sounddevice_audio_source import (  # noqa: PLC0415 -- deferred: sounddevice loaded only when audio is needed
+            SounddeviceAudioSource,
+        )
 
         if sys.platform == 'darwin':
             from lazy_take_notes.l3_interface_adapters.gateways.coreaudio_tap_source import (  # noqa: PLC0415 -- deferred: macOS only
                 CoreAudioTapSource,
-            )
-
-            if mode == AudioMode.SYSTEM_ONLY:
-                return CoreAudioTapSource()
-            from lazy_take_notes.l3_interface_adapters.gateways.mixed_audio_source import (  # noqa: PLC0415 -- deferred: macOS mix mode
-                MixedAudioSource,
             )
 
             return MixedAudioSource(SounddeviceAudioSource(), CoreAudioTapSource())
@@ -75,12 +68,6 @@ class DependencyContainer:
         # Linux / Windows — use soundcard loopback
         from lazy_take_notes.l3_interface_adapters.gateways.soundcard_loopback_source import (  # noqa: PLC0415 -- deferred: non-macOS only
             SoundCardLoopbackSource,
-        )
-
-        if mode == AudioMode.SYSTEM_ONLY:
-            return SoundCardLoopbackSource()
-        from lazy_take_notes.l3_interface_adapters.gateways.mixed_audio_source import (  # noqa: PLC0415 -- deferred: non-macOS mix mode
-            MixedAudioSource,
         )
 
         return MixedAudioSource(SounddeviceAudioSource(), SoundCardLoopbackSource())
