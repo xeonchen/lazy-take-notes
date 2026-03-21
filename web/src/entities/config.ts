@@ -67,6 +67,7 @@ export const AVAILABLE_WHISPER_MODELS = [
   'whisper-small',
   'whisper-medium',
   'whisper-large-v3-turbo',
+  'breeze-asr-25',
 ] as const;
 
 export type WhisperModelName = typeof AVAILABLE_WHISPER_MODELS[number];
@@ -74,7 +75,7 @@ export type WhisperModelName = typeof AVAILABLE_WHISPER_MODELS[number];
 export const DEFAULT_APP_CONFIG: AppConfig = {
   transcription: {
     model: AVAILABLE_WHISPER_MODELS[0],
-    models: {},
+    models: { zh: 'breeze-asr-25' },
     chunkDuration: 25.0,
     overlap: 1.0,
     silenceThreshold: 0.01,

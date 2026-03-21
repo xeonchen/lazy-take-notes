@@ -230,7 +230,7 @@ export function SettingsModal({ appConfig, infraConfig, isFirstRun, onSave, onTe
                     <option key={m} value={m}>{m}</option>
                   ))}
                 </select>
-                <div className="help-text">Larger models are more accurate but slower. base is recommended for real-time.</div>
+                <div className="help-text">Larger models are more accurate but slower. base is recommended for real-time. breeze-asr-25 is optimized for Mandarin Chinese and is auto-selected for zh locales.</div>
               </div>
             )}
           </div>

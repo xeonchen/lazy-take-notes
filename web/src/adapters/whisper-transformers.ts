@@ -15,6 +15,7 @@ const MODEL_MAP: Record<WhisperModelName, string> = {
   'whisper-small': 'onnx-community/whisper-small',
   'whisper-medium': 'onnx-community/whisper-medium',
   'whisper-large-v3-turbo': 'onnx-community/whisper-large-v3-turbo',
+  'breeze-asr-25': 'onnx-community/Breeze-ASR-25', // TODO: replace with actual ONNX repo once converted
 };
 
 type Pipeline = {
