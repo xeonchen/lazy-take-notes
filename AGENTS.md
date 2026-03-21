@@ -45,6 +45,7 @@ Runs the full pytest suite on Linux (Debian bookworm) with PulseAudio, then exer
 
 ## Testing Guidelines
 
+* **Coverage target**: Aim for **100% line coverage** whenever possible. Every new feature or fix must include tests. Use `# pragma: no cover` only for code that genuinely cannot be tested in isolation (e.g. hardware-dependent thread launchers, subprocess wiring).
 * **Architecture**: The project follows **Clean Architecture** (L1 Entities -> L2 Use Cases -> L3 Adapters -> L4 Frameworks).
 * **Test directory convention**: `tests/` mirrors the source tree one-to-one. Each source subdirectory has a corresponding test subdirectory (e.g. `l3_interface_adapters/gateways/` → `tests/l3_interface_adapters/gateways/`). New test files go in the matching subdir.
 * **Mocking Strategy**:
