@@ -30,11 +30,13 @@ from lazy_take_notes.l2_use_cases.ports.audio_source import AudioSource
 from lazy_take_notes.l2_use_cases.ports.llm_client import ChatResponse, LLMClient
 from lazy_take_notes.l2_use_cases.ports.transcriber import Transcriber
 from lazy_take_notes.l4_frameworks_and_drivers.cli_helpers import run_record, run_transcribe
+from lazy_take_notes.l4_frameworks_and_drivers.config import InfraConfig
 
 __all__ = [
     'AudioSource',
     'ChatMessage',
     'ChatResponse',
+    'InfraConfig',
     'LLMClient',
     'Transcriber',
     'TranscriptSegment',

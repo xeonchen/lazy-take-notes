@@ -48,6 +48,11 @@ class TestPluginApiExports:
 
         assert ChatMessage is not None
 
+    def test_infra_config_importable(self):
+        from lazy_take_notes.plugin_api import InfraConfig
+
+        assert InfraConfig is not None
+
 
 class TestPluginApiSignatures:
     """Override kwargs are accepted by run_transcribe and run_record."""

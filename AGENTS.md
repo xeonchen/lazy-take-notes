@@ -174,6 +174,36 @@ def my_command(ctx):
 - `run_transcribe(ctx, *, audio_path=None, subtitle_segments=None, label=None, llm_client=None, transcriber=None)` — provide `audio_path` for whisper transcription or `subtitle_segments` for subtitle replay. Optional `llm_client`/`transcriber` override defaults.
 - `run_record(ctx, *, label=None, llm_client=None, transcriber=None, audio_source=None)` — full live recording session. Optional overrides bypass `DependencyContainer` defaults.
 
+### LLM Provider Plugins
+
+Plugins can register LLM backends via the `lazy_take_notes.llm_providers` entry point group. The user selects the provider in `config.yaml` with `llm_provider: <name>`, and the standard `record`/`transcribe` commands use it automatically.
+
+1. Declare an entry point:
+```toml
+[project.entry-points."lazy_take_notes.llm_providers"]
+my-provider = "my_package:create_llm_client"
+```
+
+2. The entry point must resolve to a callable `(InfraConfig) -> LLMClient`:
+```python
+from lazy_take_notes.plugin_api import InfraConfig, LLMClient
+
+def create_llm_client(infra: InfraConfig) -> LLMClient:
+    extra = (infra.model_extra or {}).get('my_provider', {})
+    return MyLLMClient(api_key=extra.get('api_key'))
+```
+
+3. Plugin-specific config goes under an arbitrary key in `config.yaml`:
+```yaml
+llm_provider: my-provider
+my_provider:
+  api_key: sk-...
+```
+
+`InfraConfig` uses `extra='allow'`, so plugin keys pass through without validation errors. Access them via `infra.model_extra`.
+
+Resolution order: built-in (`ollama`, `openai`) checked first, then plugin entry points. Unknown provider raises `ValueError` with available options listed.
+
 ### Isolation
 
 - Plugins that fail to load print a warning to stderr, never crash the CLI.

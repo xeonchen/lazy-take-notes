@@ -100,20 +100,15 @@ def pick_template(template_loader):
 
 def preflight_llm(infra, config) -> tuple[list[str], list[str]]:
     """Check LLM connectivity and model availability. Returns (missing_digest, missing_interactive)."""
+    from lazy_take_notes.l4_frameworks_and_drivers.container import (  # noqa: PLC0415 -- deferred: avoid circular import at module level
+        DependencyContainer,
+    )
 
-    client: LLMClient
-    if infra.llm_provider == 'openai':
-        from lazy_take_notes.l3_interface_adapters.gateways.openai_llm_client import (  # noqa: PLC0415 -- deferred: only loaded for openai provider
-            OpenAICompatLLMClient,
-        )
-
-        client = OpenAICompatLLMClient(api_key=infra.openai.api_key, base_url=infra.openai.base_url)
-    else:
-        from lazy_take_notes.l3_interface_adapters.gateways.ollama_llm_client import (  # noqa: PLC0415 -- deferred: only loaded for ollama provider
-            OllamaLLMClient,
-        )
-
-        client = OllamaLLMClient(host=infra.ollama.host)
+    try:
+        client = DependencyContainer.resolve_llm_client(infra)
+    except ValueError as e:
+        click.echo(f'Error: {e}', err=True)
+        sys.exit(1)
 
     ok, err = client.check_connectivity()
     if not ok:

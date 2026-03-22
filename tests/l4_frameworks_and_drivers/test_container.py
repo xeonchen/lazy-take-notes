@@ -5,9 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from lazy_take_notes.l3_interface_adapters.gateways.yaml_template_loader import YamlTemplateLoader
 from lazy_take_notes.l4_frameworks_and_drivers.config import InfraConfig, build_app_config
-from lazy_take_notes.l4_frameworks_and_drivers.container import DependencyContainer
+from lazy_take_notes.l4_frameworks_and_drivers.container import (
+    DependencyContainer,
+    _load_plugin_llm_client,  # noqa: PLC2701 -- testing private helper
+)
 
 
 class TestDependencyContainer:
@@ -117,3 +122,45 @@ class TestDependencyContainerOverrides:
             )
 
         mock_build.assert_not_called()
+
+
+class TestPluginProviderDiscovery:
+    """Plugin LLM providers discovered via entry_points."""
+
+    def test_unknown_provider_raises_value_error(self):
+        infra = InfraConfig(llm_provider='nonexistent')
+        with pytest.raises(ValueError, match='Unknown LLM provider'):
+            _load_plugin_llm_client(infra)
+
+    def test_plugin_provider_factory_called(self):
+        fake_client = MagicMock()
+        fake_factory = MagicMock(return_value=fake_client)
+        fake_ep = MagicMock()
+        fake_ep.name = 'test-provider'
+        fake_ep.load.return_value = fake_factory
+
+        infra = InfraConfig(llm_provider='test-provider')
+        with patch(
+            'lazy_take_notes.l4_frameworks_and_drivers.container.entry_points',
+            return_value=[fake_ep],
+        ):
+            result = _load_plugin_llm_client(infra)
+
+        fake_factory.assert_called_once_with(infra)
+        assert result is fake_client
+
+    def test_resolve_falls_through_to_plugin(self, tmp_path: Path):
+        fake_client = MagicMock()
+        fake_factory = MagicMock(return_value=fake_client)
+        fake_ep = MagicMock()
+        fake_ep.name = 'my-plugin'
+        fake_ep.load.return_value = fake_factory
+
+        infra = InfraConfig(llm_provider='my-plugin')
+        with patch(
+            'lazy_take_notes.l4_frameworks_and_drivers.container.entry_points',
+            return_value=[fake_ep],
+        ):
+            result = DependencyContainer.resolve_llm_client(infra)
+
+        assert result is fake_client
