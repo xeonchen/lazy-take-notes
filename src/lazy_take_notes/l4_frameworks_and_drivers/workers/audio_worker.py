@@ -339,7 +339,7 @@ def run_audio_worker(
     if proc_rec_writer is not None:
         proc_rec_writer.join(timeout=5)
 
-    _executor.shutdown(wait=True)
+    _executor.shutdown(wait=False, cancel_futures=True)
 
     # Release transcriber resources (suppresses C-level teardown noise)
     transcriber.close()
