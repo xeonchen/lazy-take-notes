@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from importlib.metadata import entry_points
 from pathlib import Path
@@ -20,6 +21,9 @@ from lazy_take_notes.l4_frameworks_and_drivers.cli_helpers import (
 )
 from lazy_take_notes.l4_frameworks_and_drivers.cli_helpers import (
     preflight_llm as _preflight_llm,
+)
+from lazy_take_notes.l4_frameworks_and_drivers.cli_helpers import (
+    resolve_base_dir as _resolve_base_dir,
 )
 from lazy_take_notes.l4_frameworks_and_drivers.cli_helpers import (
     run_transcribe as _run_transcribe,
@@ -58,6 +62,7 @@ def _pre_init_resource_tracker() -> None:  # pragma: no cover -- best-effort pla
     '--output-dir',
     default=None,
     type=click.Path(),
+    envvar='LTN_OUTPUT_DIR',
     help='Base output directory (session subfolder created automatically).',
 )
 @click.version_option(version=__version__)
@@ -77,14 +82,17 @@ def cli(ctx, config_path, output_dir):
         WelcomePicker,
     )
 
+    kiosk = os.environ.get('LTN_KIOSK') == '1'
     while True:
         mode = WelcomePicker().run()
         if mode == 'record':
             ctx.invoke(record)
-            return
+            if not kiosk:
+                return
         elif mode == 'transcribe':
             ctx.invoke(transcribe)
-            return
+            if not kiosk:
+                return
         elif mode == 'view':
             ctx.invoke(view)
         elif mode == 'create-template':
@@ -113,7 +121,7 @@ def record(ctx, label):
     if template is None:
         return
 
-    base_dir = Path(output_dir or config.output.directory)
+    base_dir = _resolve_base_dir(output_dir, config)
     out_dir = _make_session_dir(base_dir, label)
 
     missing_digest, missing_interactive = _preflight_llm(infra, config)
@@ -176,7 +184,7 @@ def view(ctx):
     output_dir = ctx.obj['output_dir']
     config, _infra, _template_loader = _load_config(config_path, output_dir)
 
-    base_dir = Path(output_dir or config.output.directory)
+    base_dir = _resolve_base_dir(output_dir, config)
 
     from lazy_take_notes.l4_frameworks_and_drivers.apps.view import (  # noqa: PLC0415 -- deferred: Textual TUI not loaded for --help
         ViewApp,

@@ -104,7 +104,7 @@ class FilePicker(SearchablePicker[Path]):
 
     def __init__(self, start_dir: Path | None = None, audio_exts: frozenset[str] = AUDIO_EXTS, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._current_dir = (start_dir or Path.cwd()).resolve()
+        self._current_dir = (start_dir or Path.home()).resolve()
         self._audio_exts = audio_exts
         self._highlighted_dir: Path | None = None
 

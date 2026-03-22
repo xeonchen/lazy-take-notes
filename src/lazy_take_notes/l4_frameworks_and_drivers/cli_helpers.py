@@ -18,6 +18,11 @@ if TYPE_CHECKING:
     from lazy_take_notes.l1_entities.transcript import TranscriptSegment
 
 
+def resolve_base_dir(output_dir: str | None, config) -> Path:
+    """Resolve the base output directory, expanding ~ in paths."""
+    return Path(output_dir or config.output.directory).expanduser()
+
+
 def make_session_dir(base_dir: Path, label: str | None) -> Path:
     """Create a timestamped session subdirectory under base_dir."""
     stamp = datetime.now().strftime('%Y-%m-%d_%H%M%S')
@@ -156,7 +161,7 @@ def run_transcribe(
     if template is None:
         return
 
-    base_dir = Path(output_dir or config.output.directory)
+    base_dir = resolve_base_dir(output_dir, config)
     out_dir = make_session_dir(base_dir, label)
 
     missing_digest, missing_interactive = preflight_llm(infra, config)
