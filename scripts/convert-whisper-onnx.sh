@@ -137,7 +137,7 @@ echo ""
 # ---------------------------------------------------------------------------
 # Step 1: Export to ONNX
 # ---------------------------------------------------------------------------
-echo "=== Step 1/3: Converting ${MODEL_ID} to ONNX ==="
+echo "=== Step 1/4: Converting ${MODEL_ID} to ONNX ==="
 echo "Output: ${OUTPUT_DIR}"
 echo "This downloads model weights on first run (size varies by model)."
 echo ""
@@ -154,7 +154,7 @@ echo "Conversion complete."
 # Step 2: Validate output structure
 # ---------------------------------------------------------------------------
 echo ""
-echo "=== Step 2/3: Validating output ==="
+echo "=== Step 2/4: Validating output ==="
 
 required_files=(
   "${OUTPUT_DIR}/config.json"
@@ -189,7 +189,7 @@ echo "Validation passed."
 # Step 3: Quantize (int8)
 # ---------------------------------------------------------------------------
 echo ""
-echo "=== Step 3/3: Quantizing to int8 (q8) ==="
+echo "=== Step 3/4: Quantizing to int8 (q8) ==="
 echo "Output: ${QUANTIZED_DIR}"
 
 optimum-cli onnx quantize \
@@ -199,6 +199,56 @@ optimum-cli onnx quantize \
 
 echo ""
 echo "Quantization complete."
+
+# ---------------------------------------------------------------------------
+# Step 4: Build Transformers.js-compatible upload directory
+# ---------------------------------------------------------------------------
+# Transformers.js resolves dtype→file suffix:
+#   fp32 → encoder_model.onnx           (base name)
+#   q8   → encoder_model_quantized.onnx (_quantized suffix)
+# optimum-cli produces identically-named files in fp32/ and q8/ dirs.
+# We merge them into one directory with correct suffixes so both dtypes work.
+echo ""
+echo "=== Step 4: Building Transformers.js-compatible layout ==="
+UPLOAD_DIR="./${MODEL_SLUG}-onnx-upload"
+rm -rf "${UPLOAD_DIR}"
+mkdir -p "${UPLOAD_DIR}/onnx"
+
+# Copy non-ONNX config files from fp32 export (config.json, tokenizer.json, etc.)
+for f in "${OUTPUT_DIR}"/*.json "${OUTPUT_DIR}"/*.txt "${OUTPUT_DIR}"/*.model; do
+  [[ -f "$f" ]] && cp "$f" "${UPLOAD_DIR}/" 2>/dev/null
+done
+
+# Copy fp32 ONNX files with base names → onnx/ subdir
+for f in "${OUTPUT_DIR}"/*.onnx; do
+  [[ -f "$f" ]] && cp "$f" "${UPLOAD_DIR}/onnx/"
+done
+
+# Copy quantized ONNX files with _quantized suffix → onnx/ subdir
+for f in "${QUANTIZED_DIR}"/*.onnx; do
+  [[ -f "$f" ]] || continue
+  base="$(basename "$f" .onnx)"
+  cp "$f" "${UPLOAD_DIR}/onnx/${base}_quantized.onnx"
+done
+
+echo "  Upload directory: ${UPLOAD_DIR}"
+echo "  Files:"
+ls -1 "${UPLOAD_DIR}/" "${UPLOAD_DIR}/onnx/" 2>/dev/null | sed 's/^/    /'
+
+# Validate upload directory
+upload_onnx_count=$(find "${UPLOAD_DIR}" -name "*.onnx" | wc -l)
+upload_config_ok=true
+for f in config.json tokenizer.json preprocessor_config.json; do
+  [[ -f "${UPLOAD_DIR}/${f}" ]] || upload_config_ok=false
+done
+if [[ "${upload_config_ok}" != "true" || "${upload_onnx_count}" -eq 0 ]]; then
+  echo "" >&2
+  echo "ERROR: Upload directory validation failed." >&2
+  echo "  Config files present: ${upload_config_ok}" >&2
+  echo "  ONNX files found: ${upload_onnx_count}" >&2
+  exit 1
+fi
+echo "  Validation passed (${upload_onnx_count} ONNX files)."
 echo ""
 
 # ---------------------------------------------------------------------------
@@ -214,6 +264,9 @@ echo ""
 echo "Quantized (q8):  ${QUANTIZED_DIR}"
 du -sh "${QUANTIZED_DIR}" 2>/dev/null || true
 echo ""
+echo "Upload-ready:    ${UPLOAD_DIR}"
+du -sh "${UPLOAD_DIR}" 2>/dev/null || true
+echo ""
 
 # ---------------------------------------------------------------------------
 # Optional: Upload to HuggingFace
@@ -223,11 +276,10 @@ if [[ -n "${HF_USERNAME}" ]]; then
   echo "=== Uploading to HuggingFace: ${REPO_ID} ==="
   echo ""
 
-  # Upload quantized version (recommended for browser use)
-  echo "Uploading quantized (q8) model..."
-  huggingface-cli upload "${REPO_ID}" "${QUANTIZED_DIR}/" . \
+  echo "Uploading Transformers.js-compatible model (fp32 + q8)..."
+  huggingface-cli upload "${REPO_ID}" "${UPLOAD_DIR}/" . \
     --repo-type model \
-    --commit-message "Add ${MODEL_SHORT} ONNX (q8 quantized) for Transformers.js"
+    --commit-message "Add ${MODEL_SHORT} ONNX (fp32 + q8) for Transformers.js"
 
   echo ""
   echo "==========================================="
@@ -238,15 +290,15 @@ if [[ -n "${HF_USERNAME}" ]]; then
   echo ""
   echo "Next step — update web/src/adapters/whisper-transformers.ts MODEL_MAP:"
   echo ""
-  echo "  '${MODEL_SLUG}': '${REPO_ID}',"
+  echo "  '${MODEL_SLUG}': { repo: '${REPO_ID}' },"
   echo ""
 else
   echo "To upload to HuggingFace, re-run with:"
   echo "  $0 --model ${MODEL_ID} --upload YOUR_HF_USERNAME"
   echo ""
   echo "Or upload manually:"
-  echo "  huggingface-cli upload YOUR_USERNAME/${MODEL_SHORT}-${REPO_SUFFIX} ${QUANTIZED_DIR}/ . --repo-type model"
+  echo "  huggingface-cli upload YOUR_USERNAME/${MODEL_SHORT}-${REPO_SUFFIX} ${UPLOAD_DIR}/ . --repo-type model"
   echo ""
   echo "Then update web/src/adapters/whisper-transformers.ts MODEL_MAP:"
-  echo "  '${MODEL_SLUG}': 'YOUR_USERNAME/${MODEL_SHORT}-${REPO_SUFFIX}',"
+  echo "  '${MODEL_SLUG}': { repo: 'YOUR_USERNAME/${MODEL_SHORT}-${REPO_SUFFIX}' },"
 fi
