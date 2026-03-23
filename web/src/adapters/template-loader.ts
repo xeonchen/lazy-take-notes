@@ -77,3 +77,21 @@ export function loadTemplate(key: string): SessionTemplate | null {
   const all = loadBundledTemplates();
   return all.find((t) => t.metadata.key === key) ?? null;
 }
+
+/**
+ * Merge bundled templates with user templates.
+ * User templates with the same key override bundled ones.
+ */
+export function mergeTemplates(
+  bundled: SessionTemplate[],
+  userTemplates: SessionTemplate[],
+): SessionTemplate[] {
+  const map = new Map<string, SessionTemplate>();
+  for (const t of bundled) {
+    map.set(t.metadata.key, t);
+  }
+  for (const t of userTemplates) {
+    map.set(t.metadata.key, { ...t, isUserTemplate: true });
+  }
+  return Array.from(map.values()).sort((a, b) => a.metadata.name.localeCompare(b.metadata.name));
+}

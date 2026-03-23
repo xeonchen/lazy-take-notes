@@ -39,6 +39,9 @@ Unified checklist for development and review. Every item here was learned from a
 - [ ] Guard utility functions against invalid input — e.g., `formatElapsed` should handle negative values
 - [ ] `.filter(Boolean)` on string arrays removes empty strings — if blank lines are intentional, use a more specific filter
 - [ ] Locale→model mappings (`TranscriptionConfig.models`) use `Record<string, string>` — values are not type-checked against `WhisperModelName`. A typo silently falls through to a raw HF model ID lookup that 404s at runtime. Consider tightening to `Record<string, WhisperModelName>` when deserialization paths allow it. (`modelForLocale` review finding)
+- [ ] IndexedDB operations MUST have try-catch with user-visible error notifications — silent failures cause data loss and confusing UX (`template-persistence` finding)
+- [ ] Template format variables MUST be validated against allowed sets per field — unknown `{vars}` crash at runtime when `.format()` is called during live recording. Use `validateTemplate()` from `entities/template.ts` (`template-editor` finding)
+- [ ] Markdown code fences wrapping user content must use dynamic fence length — scan content for longest backtick sequence and use N+1 backticks to prevent rendering breakage (`TemplatePreview` finding)
 
 ## Unused Code
 

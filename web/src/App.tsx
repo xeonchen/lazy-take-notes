@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_APP_CONFIG, DEFAULT_INFRA_CONFIG, type AppConfig, type InfraConfig, modelForLocale } from './entities/config';
 import type { SessionTemplate } from './entities/template';
-import { loadBundledTemplates } from './adapters/template-loader';
 import { IndexedDBPersistence } from './adapters/persistence';
 import { OpenAILLMClient } from './adapters/openai-llm';
 import { OllamaLLMClient } from './adapters/ollama-llm';
@@ -11,12 +10,14 @@ import type { LLMClient, Transcriber } from './use-cases/ports';
 import { useAudioCapture } from './ui/hooks/useAudioCapture';
 import { useTranscription } from './ui/hooks/useTranscription';
 import { useSession } from './ui/hooks/useSession';
+import { useTemplates } from './ui/hooks/useTemplates';
 import { TranscriptPanel } from './ui/components/TranscriptPanel';
 import { DigestPanel } from './ui/components/DigestPanel';
 import { ContextInput } from './ui/components/ContextInput';
 import { StatusBar, type RecordingState } from './ui/components/StatusBar';
 import { SettingsModal } from './ui/components/SettingsModal';
 import { TemplateSelector } from './ui/components/TemplateSelector';
+import { TemplateEditor } from './ui/components/TemplateEditor';
 import { QueryModal } from './ui/components/QueryModal';
 import { ConsentNotice } from './ui/components/ConsentNotice';
 import { HelpModal } from './ui/components/HelpModal';
@@ -56,8 +57,21 @@ export default function App() {
   const [userContext, setUserContext] = useState('');
   const [notification, setNotification] = useState<{ text: string; type: 'info' | 'warning' | 'error' | 'success' } | null>(null);
 
+  // Notifications — cleanup timeout to avoid setting state on unmounted component
+  const notifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const notify = useCallback((text: string, type: 'info' | 'warning' | 'error' | 'success') => {
+    if (notifyTimerRef.current) clearTimeout(notifyTimerRef.current);
+    setNotification({ text, type });
+    notifyTimerRef.current = setTimeout(() => setNotification(null), 5000);
+  }, []);
+  useEffect(() => {
+    return () => {
+      if (notifyTimerRef.current) clearTimeout(notifyTimerRef.current);
+    };
+  }, []);
+
   // Templates
-  const templates = useMemo(() => loadBundledTemplates(), []);
+  const { templates, editingTemplate, actions: templateActions } = useTemplates(notify);
 
   // Timing
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -107,7 +121,7 @@ export default function App() {
 
   const [audioState, audioActions] = useAudioCapture(handleAudioData, handleAudioLevel);
 
-  // Load config on mount
+  // Load config + user templates on mount
   useEffect(() => {
     (async () => {
       const saved = await persistence.loadConfig<{ app: AppConfig; infra: InfraConfig }>();
@@ -119,6 +133,7 @@ export default function App() {
         setIsFirstRun(true);
         setShowSettings(true);
       }
+
       setConfigLoaded(true);
 
       // Check consent
@@ -168,7 +183,7 @@ export default function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (showSettings || showHelp || session.queryResult) return;
+      if (showSettings || showHelp || session.queryResult || editingTemplate) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       const key = e.key.toLowerCase();
@@ -200,7 +215,7 @@ export default function App() {
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [screen, audioState, showSettings, showHelp, session, audioActions, template]);
+  }, [screen, audioState, showSettings, showHelp, editingTemplate, session, audioActions, template]);
 
   // Template selection
   const handleTemplateSelect = (t: SessionTemplate) => {
@@ -273,19 +288,6 @@ export default function App() {
     return client.checkConnectivity();
   };
 
-  // Notifications — cleanup timeout to avoid setting state on unmounted component
-  const notifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const notify = (text: string, type: 'info' | 'warning' | 'error' | 'success') => {
-    if (notifyTimerRef.current) clearTimeout(notifyTimerRef.current);
-    setNotification({ text, type });
-    notifyTimerRef.current = setTimeout(() => setNotification(null), 5000);
-  };
-  useEffect(() => {
-    return () => {
-      if (notifyTimerRef.current) clearTimeout(notifyTimerRef.current);
-    };
-  }, []);
-
   // Compute recording state
   const recordingState: RecordingState = (() => {
     if (screen === 'stopped') return 'stopped';
@@ -312,7 +314,18 @@ export default function App() {
           templates={templates}
           selected={template?.metadata.key ?? null}
           onSelect={handleTemplateSelect}
+          onEdit={templateActions.edit}
+          onDuplicate={templateActions.duplicate}
+          onDelete={templateActions.delete}
+          onCreate={templateActions.create}
         />
+        {editingTemplate && (
+          <TemplateEditor
+            template={editingTemplate}
+            onSave={templateActions.save}
+            onCancel={templateActions.cancelEdit}
+          />
+        )}
         {showSettings && (
           <SettingsModal
             appConfig={appConfig}

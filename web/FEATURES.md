@@ -74,14 +74,19 @@ Tracking document for feature parity between the Python/Textual desktop app and 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
 | 44 | Bundled YAML templates | ✅ | Vite import.meta.glob |
-| 45 | Template selector at startup | ✅ | TemplateSelector grid |
+| 45 | Template selector at startup | ✅ | TemplateSelector split-pane (list + preview) |
 | 46 | Template metadata (name, description, locale) | ✅ | TemplateMetadata interface |
 | 47 | System prompt from template | ✅ | SessionTemplate.systemPrompt |
 | 48 | Digest user template | ✅ | digestUserTemplate with placeholders |
 | 49 | Final digest template | ✅ | finalUserTemplate with full_transcript |
 | 50 | Quick actions from template | ✅ | Up to 5 per template |
 | 51 | Recognition hints from template | ✅ | Passed to transcriber |
-| 52 | Custom user templates | 🔲 | Future: IndexedDB storage |
+| 52 | Custom user templates | ✅ | IndexedDB storage via template-persistence adapter |
+| 52a | Template preview pane | ✅ | Live preview in selector and editor |
+| 52b | Edit template (all fields) | ✅ | TemplateEditor modal with Edit/Preview tabs |
+| 52c | Duplicate template | ✅ | Clone with unique UUID key |
+| 52d | Delete user template | ✅ | With confirmation dialog |
+| 52e | Format variable validation | ✅ | Mirrors Python template_validator |
 | 53 | default_en template | ✅ | Bundled |
 | 54 | default_zh_tw template | ✅ | Bundled |
 | 55 | daily_standup_en template | ✅ | Bundled |

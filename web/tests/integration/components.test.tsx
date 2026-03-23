@@ -3,7 +3,7 @@
  * Verifies component rendering, interactions, and state management.
  */
 import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
 
 // jsdom doesn't implement scrollIntoView
 beforeAll(() => {
@@ -216,36 +216,61 @@ describe('StatusBar', () => {
 });
 
 describe('TemplateSelector', () => {
-  it('renders template cards', () => {
-    render(<TemplateSelector templates={mockTemplates} selected={null} onSelect={vi.fn()} />);
-    expect(screen.getByText('Default (English)')).toBeInTheDocument();
-    expect(screen.getByText('預設 (繁體中文)')).toBeInTheDocument();
+  const defaultSelectorProps = {
+    templates: mockTemplates,
+    selected: null as string | null,
+    onSelect: vi.fn(),
+    onEdit: vi.fn(),
+    onDuplicate: vi.fn(),
+    onDelete: vi.fn(),
+    onCreate: vi.fn(),
+  };
+
+  it('renders template list items', () => {
+    const { container } = render(<TemplateSelector {...defaultSelectorProps} />);
+    const listPane = container.querySelector('.template-list-pane') as HTMLElement;
+    expect(listPane).not.toBeNull();
+    // Template names appear in both list and preview; check list pane specifically
+    expect(within(listPane).getByText('Default (English)')).toBeInTheDocument();
+    expect(within(listPane).getByText('預設 (繁體中文)')).toBeInTheDocument();
   });
 
   it('shows template descriptions', () => {
-    render(<TemplateSelector templates={mockTemplates} selected={null} onSelect={vi.fn()} />);
-    expect(screen.getByText('General notes')).toBeInTheDocument();
-    expect(screen.getByText('通用筆記')).toBeInTheDocument();
+    const { container } = render(<TemplateSelector {...defaultSelectorProps} />);
+    const listPane = container.querySelector('.template-list-pane') as HTMLElement;
+    expect(within(listPane).getByText('General notes')).toBeInTheDocument();
+    expect(within(listPane).getByText('通用筆記')).toBeInTheDocument();
   });
 
   it('shows quick action count', () => {
-    render(<TemplateSelector templates={mockTemplates} selected={null} onSelect={vi.fn()} />);
-    expect(screen.getByText('2 quick actions')).toBeInTheDocument();
+    const { container } = render(<TemplateSelector {...defaultSelectorProps} />);
+    const listPane = container.querySelector('.template-list-pane') as HTMLElement;
+    expect(within(listPane).getByText('2 actions')).toBeInTheDocument();
   });
 
-  it('calls onSelect when clicking a card', () => {
+  it('calls onSelect when clicking Select button', () => {
     const onSelect = vi.fn();
-    render(<TemplateSelector templates={mockTemplates} selected={null} onSelect={onSelect} />);
-    fireEvent.click(screen.getByText('Default (English)'));
+    const { container } = render(<TemplateSelector {...defaultSelectorProps} onSelect={onSelect} />);
+    const listPane = container.querySelector('.template-list-pane') as HTMLElement;
+    // Click a template to highlight it, then click Select
+    fireEvent.click(within(listPane).getByText('Default (English)'));
+    fireEvent.click(screen.getByRole('button', { name: 'Select' }));
     expect(onSelect).toHaveBeenCalledWith(mockTemplates[0]);
   });
 
   it('highlights selected template', () => {
     const { container } = render(
-      <TemplateSelector templates={mockTemplates} selected="default_en" onSelect={vi.fn()} />,
+      <TemplateSelector {...defaultSelectorProps} selected="default_en" />,
     );
-    const selectedCard = container.querySelector('.template-card.selected');
-    expect(selectedCard).not.toBeNull();
+    const selectedItem = container.querySelector('.template-list-item.selected');
+    expect(selectedItem).not.toBeNull();
+  });
+
+  it('shows New button to create template', () => {
+    const onCreate = vi.fn();
+    render(<TemplateSelector {...defaultSelectorProps} onCreate={onCreate} />);
+    fireEvent.click(screen.getByRole('button', { name: '+ New' }));
+    expect(onCreate).toHaveBeenCalled();
   });
 });
 
